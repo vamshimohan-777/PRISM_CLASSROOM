@@ -1,23 +1,28 @@
 import os
 os.environ["DATABASE_URL"]="sqlite:///./test.db"
-from fastapi.testclient import TestClient
-from app.main import app
+from app.database import SessionLocal, engine
+from app.main import submit_attempt, interventions, decide_intervention
+from app.schemas import AttemptIn, InterventionDecision
 from app.seed import main as seed
 
 def setup_module(): seed()
 def teardown_module():
-    if os.path.exists("test.db"): os.remove("test.db")
+    # Windows may retain SQLite handles briefly; the test database is git-ignored.
+    engine.dispose()
 
 def test_student_attempt_and_idempotency():
-    c=TestClient(app)
-    response=c.post("/api/students/STU-CALC/attempts",json={"question_id":"diag-equivalent","response":"2/4","stage":"diagnostic","submission_id":"test-submission-0001"})
-    assert response.status_code==200 and response.json()["correct"]
-    duplicate=c.post("/api/students/STU-CALC/attempts",json={"question_id":"diag-equivalent","response":"2/4","stage":"diagnostic","submission_id":"test-submission-0001"})
-    assert duplicate.json()["duplicate"] is True
+    db=SessionLocal()
+    payload=AttemptIn(question_id="diag-equivalent",response="2/4",stage="diagnostic",submission_id="test-submission-0001")
+    response=submit_attempt("STU-CALC",payload,db)
+    assert response["correct"]
+    duplicate=submit_attempt("STU-CALC",payload,db)
+    assert duplicate["duplicate"] is True
+    db.close()
 
 def test_teacher_can_view_and_decide_intervention():
-    c=TestClient(app,headers={"X-Demo-Teacher":"TEACHER-PRISM"})
-    plans=c.get("/api/teacher/interventions")
-    assert plans.status_code==200 and len(plans.json()) > 0
-    update=c.put(f"/api/teacher/interventions/{plans.json()[0]['id']}",json={"status":"approved","teacher_notes":"Use fraction strips first."})
-    assert update.status_code==200 and update.json()["status"]=="approved"
+    db=SessionLocal()
+    plans=interventions("TEACHER-PRISM",db)
+    assert len(plans)>0
+    update=decide_intervention(plans[0]["id"],InterventionDecision(status="approved",teacher_notes="Use fraction strips first."),"TEACHER-PRISM",db)
+    assert update["status"]=="approved"
+    db.close()

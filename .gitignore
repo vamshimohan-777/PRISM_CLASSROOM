@@ -5,6 +5,10 @@ __pycache__/
 .venv/
 .env
 backend/prism.db
+backend/test.db
 .pytest_cache/
 coverage/
+*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
