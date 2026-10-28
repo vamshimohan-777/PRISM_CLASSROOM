@@ -1,7 +1,7 @@
 import os
 os.environ["DATABASE_URL"]="sqlite:///./test.db"
 from app.database import SessionLocal, engine
-from app.main import submit_attempt, interventions, decide_intervention
+from app.main import submit_attempt, interventions, decide_intervention, curriculum
 from app.schemas import AttemptIn, InterventionDecision
 from app.seed import main as seed
 
@@ -26,3 +26,9 @@ def test_teacher_can_view_and_decide_intervention():
     update=decide_intervention(plans[0]["id"],InterventionDecision(status="approved",teacher_notes="Use fraction strips first."),"TEACHER-PRISM",db)
     assert update["status"]=="approved"
     db.close()
+
+def test_project_declares_a_single_cbse_curriculum():
+    details = curriculum()
+    assert details["board_code"] == "CBSE"
+    assert details["grade"] == 8
+    assert "Rational Numbers" in details["module_title"]

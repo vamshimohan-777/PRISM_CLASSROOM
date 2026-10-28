@@ -1,0 +1,7 @@
+.curriculum-focus{margin-top:18px;background:#f0fbf8;border:1px solid #ceeee5;border-radius:13px;padding:22px}
+.curriculum-focus h2{font-size:20px;margin:11px 0 3px}
+.curriculum-focus>p{font-size:13px;color:#527169;margin-bottom:14px}
+.curriculum-focus>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.curriculum-focus span{display:flex;align-items:flex-start;gap:6px;font-size:13px;color:#284d45}
+.curriculum-focus svg{color:#168276;flex:none;margin-top:2px}
+@media(max-width:800px){.curriculum-focus>div{grid-template-columns:1fr}}

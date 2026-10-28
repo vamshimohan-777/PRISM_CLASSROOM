@@ -1,6 +1,17 @@
 # PRISM Classroom
 
-PRISM is a working vertical-slice prototype for Class 8 Mathematics — Equivalent Fractions. It supports an evidence-led student learning loop and a teacher-controlled **Intervention Compiler**. All included people and learning data are synthetic.
+PRISM is a working vertical-slice prototype for **CBSE-aligned Class VIII Mathematics**. Its single module, **Rational Numbers: Equivalent Fractions and Standard Form**, uses an NCERT middle-stage reference and supports an evidence-led student learning loop plus a teacher-controlled **Intervention Compiler**. All included people and learning data are synthetic.
+
+## Curriculum framework
+
+The project is deliberately built around one system: **Central Board of Secondary Education (CBSE), India**. The board alignment, academic year, grade, subject, chapter reference, learning outcomes, and learner-facing labels are served from one API configuration (`backend/app/curriculum.py`) so the student and teacher experiences cannot silently diverge.
+
+- Board: CBSE · Academic year 2026–27
+- Reference: NCERT Mathematics, Class VIII — *Rational Numbers*
+- Module outcomes: represent equivalent rational numbers; reduce to standard form; compare rational numbers; explain reasoning with symbols, words, or a visual model.
+- Teaching approach: conceptual understanding, reasoning, and real-life application.
+
+This is a synthetic educational prototype, not an official CBSE product or a statement of school affiliation. Schools must verify their prescribed text, annual plan, and assessment policy before classroom use. CBSE's official academic materials are available at [CBSE Academics](https://cbseacademic.nic.in/).
 
 ## Highlights
 

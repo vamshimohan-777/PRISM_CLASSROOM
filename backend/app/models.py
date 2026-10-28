@@ -8,7 +8,7 @@ class Classroom(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     code: Mapped[str] = mapped_column(String(32), unique=True, index=True)
     grade: Mapped[int] = mapped_column(Integer, default=8)
-    curriculum: Mapped[str] = mapped_column(String(80), default="NCERT-aligned")
+    curriculum: Mapped[str] = mapped_column(String(80), default="CBSE-aligned · NCERT reference")
 
 class Teacher(Base):
     __tablename__ = "teachers"

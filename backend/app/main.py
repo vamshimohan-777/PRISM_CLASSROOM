@@ -6,6 +6,7 @@ from .database import Base, engine, get_db
 from .models import Student, Teacher, Question, Attempt, LearnerProgress, Classroom, Intervention
 from .schemas import AttemptIn, InterventionDecision
 from .engine import update_profile, compile_groups, validate_graph
+from .curriculum import CBSE_CURRICULUM
 
 validate_graph()
 Base.metadata.create_all(bind=engine)
@@ -26,9 +27,14 @@ def progress_out(p: LearnerProgress, code=""):
 @app.get("/api/health")
 def health(): return {"status":"ok"}
 
+@app.get("/api/curriculum")
+def curriculum():
+    """The declared board framework for every PRISM learning surface."""
+    return CBSE_CURRICULUM
+
 @app.get("/api/demo")
 def demo(db: Session = Depends(get_db)):
-    return {"students":[s.code for s in db.scalars(select(Student).order_by(Student.id)).all()], "teacher":"TEACHER-PRISM"}
+    return {"students":[s.code for s in db.scalars(select(Student).order_by(Student.id)).all()], "teacher":"TEACHER-PRISM", "curriculum":CBSE_CURRICULUM}
 
 @app.get("/api/students/{code}/questions")
 def questions(code: str, stage: str, db: Session = Depends(get_db)):
@@ -75,7 +81,8 @@ def overview(x_demo_teacher: str = Header(default=""), db: Session = Depends(get
     for s in students:
         p=db.scalar(select(LearnerProgress).where(LearnerProgress.student_id==s.id, LearnerProgress.concept_id=="equivalent-fractions"))
         output.append(progress_out(p,s.code))
-    return {"class_code":db.get(Classroom,teacher.classroom_id).code,"synthetic":True,"students":output}
+    room=db.get(Classroom,teacher.classroom_id)
+    return {"class_code":room.code,"synthetic":True,"curriculum":CBSE_CURRICULUM,"students":output}
 
 @app.get("/api/teacher/interventions")
 def interventions(x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db)):
