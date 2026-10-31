@@ -1,44 +1,1320 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { api, type Curriculum, type Plan, type Profile, type Question } from './api';
-import { ArrowRight, BarChart3, Check, ChevronRight, CircleHelp, FlaskConical, GraduationCap, Lightbulb, Users } from 'lucide-react';
+import { FormEvent, useEffect, useState } from 'react';
+import {
+  ArrowRight,
+  BookOpen,
+  CheckCircle2,
+  Clock3,
+  GraduationCap,
+  LayoutDashboard,
+  LockKeyhole,
+  LogOut,
+  RotateCcw,
+  Sparkles,
+  Users,
+  Wifi,
+  WifiOff,
+  Globe2,
+  FileText,
+  UserCheck,
+  ChevronRight,
+  Shield,
+  Layers,
+} from 'lucide-react';
+import {
+  api,
+  type Auth,
+  type Plan,
+  type Progress,
+  type Question,
+  type Unit,
+  type User,
+  type WorkspaceData,
+  type Persona,
+  type StudentDetail,
+  type LearnerSummary,
+} from './api';
+import { Language, TRANSLATIONS } from './translations';
+import {
+  VisualFractionBarWorkbench,
+  FoundationStripWorkbench,
+  GuidedPracticeWorkbench,
+  ExtensionRecipeWorkbench,
+} from './InteractiveTools';
+import {
+  EditPlanModal,
+  StudentDossierModal,
+  PrintPlanModal,
+  LessonTimelineSchedule,
+} from './TeacherModals';
+import { HackathonTourModal } from './HackathonTourModal';
 
-const names:Record<string,string>={"STU-VISUAL":"Aarav", "STU-FOUNDATION":"Diya", "STU-CALC":"Kabir", "STU-EXTEND":"Meera"};
-const routeCopy:Record<string,{title:string;body:string;kind:string}>={
-  "foundation":{title:"Start with the building blocks",body:"Rational numbers describe parts of a whole and can be positive or negative. Before comparing or changing one, make sure every part is the same size.",kind:"Foundation check"},
-  "visual-support":{title:"See the whole before comparing",body:"When the top number is the same, splitting the same whole into fewer equal parts makes each part larger. Fraction bars can help us check this.",kind:"Visual explanation"},
-  "guided-practice":{title:"Keep both numbers in step",body:"Equivalent rational numbers name the same amount. Multiply or divide the numerator and denominator by the same non-zero number — never change only one.",kind:"Worked example"},
-  "extension":{title:"Use equivalence in a new setting",body:"You can choose a different but equal name for the same quantity. This is useful for recipes, maps, and ratios.",kind:"Extension"},
-  "follow-up":{title:"Let’s check one more idea",body:"Your answers point in different directions. One short contrast question will help choose the most useful next activity.",kind:"Evidence check"},
-  "test":{title:"Ready to show what you know",body:"You have built useful practice evidence. Try a new context independently.",kind:"Transfer check"},
-  "diagnostic":{title:"Let’s learn how you think",body:"Answer a few short questions. There are no labels here—your answers help choose a helpful first activity.",kind:"Diagnostic"}
-};
+type Session = Auth;
+const sessionKey = 'prism-session';
+const offlineQueueKey = 'prism-offline-attempts';
 
-function FractionBars(){return <div className="bars"><div><span className="label">1/2</span><i className="fill half"/><i/><i className="fill half"/><i/></div><div><span className="label">2/4</span>{[0,1,2,3].map(n=><i key={n} className={n<2?'fill':''}/>)}</div><em>Same shaded amount · different names</em></div>}
-function Pill({children}:{children:ReactNode}){return <span className="pill">{children}</span>}
-function CurriculumFocus({curriculum}:{curriculum:Curriculum|null}){if(!curriculum)return null;return <section className="curriculum-focus"><Pill>{curriculum.board_code} / NCERT LEARNING FOCUS</Pill><h2>{curriculum.module_title}</h2><p>{curriculum.chapter_reference} · {curriculum.academic_year}</p><div>{curriculum.learning_outcomes.map(outcome=><span key={outcome}><Check size={15}/>{outcome}</span>)}</div></section>}
-
-function Student({code,onExit}:{code:string;onExit:()=>void}){
- const [profile,setProfile]=useState<Profile|null>(null),[curriculum,setCurriculum]=useState<Curriculum|null>(null),[stage,setStage]=useState('home'),[questions,setQuestions]=useState<Question[]>([]),[index,setIndex]=useState(0),[selected,setSelected]=useState(''),[feedback,setFeedback]=useState<string|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
- useEffect(()=>{api.profile(code).then(setProfile).catch(()=>setError('Unable to load your learning profile. Start the API server and try again.'));api.curriculum().then(setCurriculum).catch(()=>undefined)},[code]);
- const begin=async(next:string)=>{setError('');setFeedback(null);setIndex(0);setSelected('');setStage(next); try{setQuestions(await api.questions(code,next))}catch{setError('Lessons could not load. Check your connection and retry.')}};
- const answer=async()=>{const q=questions[index];if(!selected||!q)return;setBusy(true);try{const r=await api.attempt(code,{question_id:q.id,response:selected,stage:stage as 'diagnostic'|'practice'|'test',submission_id:crypto.randomUUID()});setProfile(r.profile);setFeedback(`${r.correct?'Correct. ':'Not quite. '}${r.feedback} ${r.reason}`)}catch{setError('Your response was not saved. Please try again.')}finally{setBusy(false)}};
- const next=()=>{if(index+1<questions.length){setIndex(index+1);setSelected('');setFeedback(null)} else setStage('learn')};
- const copy=routeCopy[profile?.recommendation||'diagnostic'];
- if(error&&!profile)return <div className="screen center"><div className="errorbox">{error}</div><button onClick={onExit}>Back to demo selection</button></div>;
- return <div className="student-shell"><header><div className="brand"><span className="logo">P</span> PRISM <small>CLASSROOM</small></div><div className="student-id"><span className="avatar">{names[code]?.[0]}</span>{names[code]||code} <button className="text-btn" onClick={onExit}>Switch</button></div></header><main className="student-main">
-  <div className="student-kicker">{curriculum?.board_code||'CBSE'} · Class {curriculum?.grade||8} {curriculum?.subject||'Mathematics'} <ChevronRight size={15}/> Rational numbers</div>
-  {stage==='home'&&<><section className="hero"><Pill>YOUR LEARNING PATH</Pill><h1>Rational numbers</h1><p>Find equivalent forms, write a number in standard form, and use rational numbers in everyday problems.</p><div className="progress-row"><span>Evidence collected</span><b>{profile?.evidence_count||0} responses</b><div className="track"><i style={{width:`${(profile?.mastery||.2)*100}%`}}/></div><b>{Math.round((profile?.mastery||.2)*100)}%</b></div><button className="primary" onClick={()=>begin('diagnostic')}>Start a quick check <ArrowRight size={18}/></button></section><CurriculumFocus curriculum={curriculum}/><section className="lesson-grid"><article><span className="icon purple"><Lightbulb/></span><h3>Learn</h3><p>Visual ideas and examples that match your next step.</p></article><article><span className="icon amber"><FlaskConical/></span><h3>Solve</h3><p>Practice with the right amount of support.</p></article><article><span className="icon teal"><Check/></span><h3>Test</h3><p>Use your learning in a new context.</p></article></section></>}
-  {stage==='learn'&&<section className="lesson-card"><div className="lesson-top"><Pill>{copy.kind}</Pill><button className="text-btn" onClick={()=>setStage('home')}>Save & exit</button></div><h1>{copy.title}</h1><p>{copy.body}</p><FractionBars/><div className="example"><b>Try the pattern</b><span>1/2 × 2/2 = 2/4</span><span>We changed both numbers by the same factor, so the amount stayed the same.</span></div><button className="primary" onClick={()=>begin('practice')}>Practise this idea <ArrowRight size={18}/></button></section>}
-  {(stage==='diagnostic'||stage==='practice'||stage==='test')&&<section className="question-card"><div className="question-meta"><Pill>{stage==='test'?'TRANSFER ASSESSMENT':stage.toUpperCase()}</Pill><span>Question {index+1} of {questions.length}</span></div>{questions[index]?<><h2>{questions[index].prompt}</h2><div className="options">{questions[index].options.map(o=><button key={o} className={selected===o?'selected':''} onClick={()=>!feedback&&setSelected(o)}>{o}</button>)}</div>{feedback?<div className="feedback"><b>{feedback}</b><button className="primary" onClick={next}>{index+1<questions.length?'Next question':'See my learning step'} <ArrowRight size={18}/></button></div>:<button disabled={!selected||busy} className="primary" onClick={answer}>{busy?'Saving…':'Check my answer'} <ArrowRight size={18}/></button>}</>:<p>Loading activity…</p>}{error&&<p className="error">{error}</p>}</section>}
- </main></div>
+interface QueuedAttempt {
+  question_id: string;
+  response: string;
+  stage: 'diagnostic' | 'practice' | 'test';
+  submission_id: string;
+  unit_id: string;
+  timestamp: string;
 }
 
-function Teacher({onExit}:{onExit:()=>void}){
- const [students,setStudents]=useState<Profile[]>([]),[plans,setPlans]=useState<Plan[]>([]),[selected,setSelected]=useState<Plan|null>(null),[notes,setNotes]=useState(''),[activity,setActivity]=useState(''),[error,setError]=useState('');
- const load=()=>Promise.all([api.overview(),api.plans()]).then(([o,p])=>{setStudents(o.students);setPlans(p)}).catch(()=>setError('Dashboard data could not load. Start the API server and refresh.'));
- useEffect(()=>{load()},[]);
- const decide=async(status:'approved'|'rejected')=>{if(!selected)return;try{await api.decide(selected.id,{status,teacher_notes:notes,activity:activity||undefined});setSelected(null);setNotes('');setActivity('');load()}catch{setError('Could not save this teacher decision.')}};
- return <div className="teacher-shell"><aside><div className="brand"><span className="logo">P</span> PRISM <small>CLASSROOM</small></div><p className="teacher-label">TEACHER SPACE</p><button className="nav active"><BarChart3/> Overview</button><button className="nav"><Users/> Learner evidence</button><button className="nav"><CircleHelp/> Concept insights</button><button className="nav active"><FlaskConical/> Intervention compiler</button><div className="bottom"><Pill>SIMULATED DATA</Pill><button className="text-btn" onClick={onExit}>Exit demo</button></div></aside><main className="teacher-main"><header><div><p className="eyebrow">CLASS 8A · NCERT-ALIGNED</p><h1>Class learning pulse</h1><p>Equivalent fractions · synthetic demonstration data</p></div><button className="outline" onClick={load}>Refresh evidence</button></header>{error&&<div className="errorbox">{error}</div>}<section className="metric-grid"><div><span>Class evidence</span><b>{students.reduce((n,s)=>n+s.evidence_count,0)} <small>responses</small></b></div><div><span>Ready for transfer</span><b>{students.filter(s=>s.recommendation==='extension'||s.recommendation==='test').length} <small>learners</small></b></div><div><span>Needs review</span><b>{students.filter(s=>s.recommendation==='follow-up').length} <small>learner</small></b></div></section><section className="teacher-section"><div className="section-head"><div><Pill>TEACHER INTERVENTION COMPILER</Pill><h2>Suggested small-group plan</h2><p>Generated from current response evidence. Review before using—these are tentative recommendations, not student labels.</p></div></div><div className="plans">{plans.map(p=><article className="plan" key={p.id}><div className="plan-title"><div><Pill>{p.confidence} confidence</Pill><h3>{p.barrier}</h3><p className="codes">{p.student_codes.map(c=>names[c]||c).join(' · ')}</p></div><span className={`status ${p.status}`}>{p.status}</span></div><p>{p.evidence}</p><div className="plan-details"><span><b>Activity</b>{p.activity}</span><span><b>Time</b>{p.duration}</span><span><b>Check</b>{p.follow_up}</span></div><button className="outline" onClick={()=>{setSelected(p);setNotes(p.teacher_notes);setActivity(p.activity)}}>Review recommendation <ChevronRight size={16}/></button></article>)}</div></section><section className="teacher-section"><h2>Individual evidence</h2><div className="student-table">{students.map(s=><div key={s.student_code}><span className="avatar">{names[s.student_code]?.[0]}</span><b>{names[s.student_code]}</b><span className="route">{s.recommendation.replace('-', ' ')}</span><div className="mini"><i style={{width:`${s.mastery*100}%`}}/></div><span>{Math.round(s.mastery*100)}%</span></div>)}</div></section></main>{selected&&<div className="modal-backdrop"><section className="modal"><Pill>TEACHER REVIEW</Pill><h2>{selected.barrier}</h2><p>{selected.evidence}</p><label>Suggested activity<textarea value={activity} onChange={e=>setActivity(e.target.value)}/></label><label>Teacher notes<textarea placeholder="Add a local classroom adjustment…" value={notes} onChange={e=>setNotes(e.target.value)}/></label><div className="modal-actions"><button className="danger" onClick={()=>decide('rejected')}>Reject</button><button className="primary" onClick={()=>decide('approved')}>Approve plan <Check size={17}/></button></div><button className="text-btn close" onClick={()=>setSelected(null)}>Close</button></section></div>}</div>
+function Brand() {
+  return (
+    <div className="brand">
+      <span className="logo">P</span>
+      <span>PRISM</span>
+      <small>CLASSROOM</small>
+    </div>
+  );
 }
 
-export default function App(){const [view,setView]=useState<'entry'|'student'|'teacher'>('entry'),[code,setCode]=useState('STU-VISUAL');if(view==='student')return <Student code={code} onExit={()=>setView('entry')}/>;if(view==='teacher')return <Teacher onExit={()=>setView('entry')}/>;return <div className="entry"><div className="entry-head"><div className="brand"><span className="logo">P</span> PRISM <small>CLASSROOM</small></div><Pill>CBSE · 2026–27</Pill></div><div className="entry-grid"><section><Pill>CBSE / NCERT · CLASS VIII MATHEMATICS</Pill><h1>Every rational-number answer tells a different story.</h1><p>PRISM supports the Class VIII Rational Numbers module with learner evidence, visual reasoning, standard-form practice, and teacher-reviewed next steps.</p><div className="loop"><span>Diagnose</span><ArrowRight/><span>Adapt</span><ArrowRight/><span>Practise</span><ArrowRight/><span>Verify</span></div></section><section className="entry-card"><h2>Open the working demo</h2><p>CBSE-aligned · NCERT Class VIII reference<br/>All learner names and results are synthetic.</p><label>Student learning path<select value={code} onChange={e=>setCode(e.target.value)}>{Object.entries(names).map(([k,v])=><option key={k} value={k}>{v} · {k.replace('STU-','')}</option>)}</select></label><button className="primary full" onClick={()=>setView('student')}>Enter student demo <GraduationCap size={18}/></button><div className="or">or</div><button className="outline full" onClick={()=>setView('teacher')}>Open teacher dashboard <Users size={18}/></button></section></div></div>}
+// ----------------------------------------------------
+// Topbar with Judge Showcase Bar
+// ----------------------------------------------------
+function Topbar({
+  user,
+  lang,
+  onLangChange,
+  isOffline,
+  onToggleOffline,
+  queuedCount,
+  onSyncQueue,
+  onResetDemo,
+  onOpenTour,
+  onSelectPersona,
+  onSignOut,
+}: {
+  user: User;
+  lang: Language;
+  onLangChange: (lang: Language) => void;
+  isOffline: boolean;
+  onToggleOffline: () => void;
+  queuedCount: number;
+  onSyncQueue: () => void;
+  onResetDemo: () => void;
+  onOpenTour: () => void;
+  onSelectPersona: (email: string) => void;
+  onSignOut: () => void;
+}) {
+  const t = TRANSLATIONS[lang];
+
+  return (
+    <header className="topbar">
+      <div className="topbar-content">
+        <Brand />
+
+        <div className="showcase-actions">
+          {/* Quick Persona Switcher for Hackathon Judges */}
+          <div className="persona-switcher" title="Quick Persona Switcher for Hackathon Judges">
+            <span className="persona-label">Persona:</span>
+            <button
+              type="button"
+              className={`persona-btn ${user.student_code === 'STU-VISUAL' ? 'active' : ''}`}
+              onClick={() => onSelectPersona('student@prism.demo')}
+              title="Aarav: Denominator Misconception (Visual Route)"
+            >
+              🟣 Aarav (Visual)
+            </button>
+            <button
+              type="button"
+              className={`persona-btn ${user.student_code === 'STU-FOUNDATION' ? 'active' : ''}`}
+              onClick={() => onSelectPersona('diya@prism.demo')}
+              title="Diya: Prerequisite Gap (Foundation Route)"
+            >
+              🟠 Diya (Foundation)
+            </button>
+            <button
+              type="button"
+              className={`persona-btn ${user.student_code === 'STU-CALC' ? 'active' : ''}`}
+              onClick={() => onSelectPersona('kabir@prism.demo')}
+              title="Kabir: Calculation Slips (Guided Route)"
+            >
+              🔵 Kabir (Guided)
+            </button>
+            <button
+              type="button"
+              className={`persona-btn ${user.student_code === 'STU-EXTEND' ? 'active' : ''}`}
+              onClick={() => onSelectPersona('meera@prism.demo')}
+              title="Meera: High Mastery (Recipe Lab Route)"
+            >
+              🟢 Meera (Extension)
+            </button>
+            <button
+              type="button"
+              className={`persona-btn ${user.role === 'teacher' ? 'active' : ''}`}
+              onClick={() => onSelectPersona('teacher@prism.demo')}
+              title="Ms. Ananya: Teacher Control Room & Intervention Compiler"
+            >
+              👩‍🏫 Ms. Ananya (Teacher)
+            </button>
+          </div>
+
+          {/* Multilingual Switcher */}
+          <div className="lang-toggle">
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
+              onClick={() => onLangChange('en')}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'hi' ? 'active' : ''}`}
+              onClick={() => onLangChange('hi')}
+            >
+              हिंदी
+            </button>
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'te' ? 'active' : ''}`}
+              onClick={() => onLangChange('te')}
+            >
+              తెలుగు
+            </button>
+          </div>
+
+          {/* Simulated Offline Toggle & Sync Queue */}
+          <button
+            type="button"
+            className={`net-status-pill ${isOffline ? 'offline' : 'online'}`}
+            onClick={onToggleOffline}
+            title="Click to toggle Simulated Offline mode (tests local queueing & syncing)"
+          >
+            {isOffline ? <WifiOff size={13} /> : <Wifi size={13} />}
+            <span>{isOffline ? 'Simulated Offline' : 'Online'}</span>
+            {queuedCount > 0 && <span className="badge-pill gold">({queuedCount} queued)</span>}
+          </button>
+
+          {queuedCount > 0 && (
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ padding: '5px 10px', fontSize: '11px' }}
+              onClick={onSyncQueue}
+            >
+              Sync ({queuedCount})
+            </button>
+          )}
+
+          {/* Architecture / Tour Modal */}
+          <button type="button" className="tour-btn" onClick={onOpenTour}>
+            <Sparkles size={14} /> Brief & Architecture
+          </button>
+
+          {/* Reset Demo */}
+          <button
+            type="button"
+            className="btn-reset-demo"
+            onClick={onResetDemo}
+            title="Reset demo data to initial pristine archetypes"
+          >
+            <RotateCcw size={14} /> Reset
+          </button>
+
+          {/* Sign Out */}
+          <button type="button" className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={onSignOut}>
+            <LogOut size={14} /> {t.signOut}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// ----------------------------------------------------
+// Authentication & Hackathon Quick Start
+// ----------------------------------------------------
+function AuthScreen({
+  onAuthenticated,
+  lang,
+  onLangChange,
+  onOpenTour,
+}: {
+  onAuthenticated: (auth: Session) => void;
+  lang: Language;
+  onLangChange: (lang: Language) => void;
+  onOpenTour: () => void;
+}) {
+  const [mode, setMode] = useState<'sign-in' | 'register'>('sign-in');
+  const [role, setRole] = useState<'student' | 'teacher'>('student');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('student@prism.demo');
+  const [password, setPassword] = useState('PrismDemo!2026');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const t = TRANSLATIONS[lang];
+
+  const quickLogin = async (targetEmail: string) => {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await api.login(targetEmail, 'PrismDemo!2026');
+      localStorage.setItem(sessionKey, JSON.stringify(result));
+      onAuthenticated(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to log in.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const result =
+        mode === 'sign-in'
+          ? await api.login(email, password)
+          : await api.register(name, email, password, role);
+      localStorage.setItem(sessionKey, JSON.stringify(result));
+      onAuthenticated(result);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to continue.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <main className="auth-page">
+      <nav>
+        <Brand />
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <div className="lang-toggle">
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
+              onClick={() => onLangChange('en')}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'hi' ? 'active' : ''}`}
+              onClick={() => onLangChange('hi')}
+            >
+              हिंदी
+            </button>
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'te' ? 'active' : ''}`}
+              onClick={() => onLangChange('te')}
+            >
+              తెలుగు
+            </button>
+          </div>
+          <button type="button" className="tour-btn" onClick={onOpenTour}>
+            <Sparkles size={14} /> Code Kernel '26 Brief
+          </button>
+          <span className="secure">
+            <LockKeyhole size={14} /> CBSE Mathematics 2026–27
+          </span>
+        </div>
+      </nav>
+
+      <section className="auth-layout">
+        <div className="auth-story">
+          <span className="eyebrow">{t.boardTag}</span>
+          <h1>Misconception-aware learning that keeps teachers at the centre.</h1>
+          <p>
+            PRISM bridges the gap between student diagnostic evidence and teacher classroom action
+            using transparent rules, interactive visual tools, and an editable Intervention Compiler.
+          </p>
+
+          <div className="auth-points">
+            <span>
+              <CheckCircle2 /> <b>Transparent Rules Engine:</b> Explainable hypotheses, zero hallucinations.
+            </span>
+            <span>
+              <CheckCircle2 /> <b>3-Part Adaptation:</b> Visual learn, scaffolded solve, independent transfer test.
+            </span>
+            <span>
+              <CheckCircle2 /> <b>Teacher Intervention Compiler:</b> Turns learner evidence into editable pod plans.
+            </span>
+            <span>
+              <CheckCircle2 /> <b>Built for Indian Classrooms:</b> English, Hindi & Telugu with offline queueing.
+            </span>
+          </div>
+        </div>
+
+        <form className="auth-card" onSubmit={submit}>
+          <div className="auth-switch">
+            <button
+              type="button"
+              className={mode === 'sign-in' ? 'active' : ''}
+              onClick={() => setMode('sign-in')}
+            >
+              {t.signIn}
+            </button>
+            <button
+              type="button"
+              className={mode === 'register' ? 'active' : ''}
+              onClick={() => setMode('register')}
+            >
+              {t.createAccount}
+            </button>
+          </div>
+
+          <h2>{mode === 'sign-in' ? t.welcomeBack : t.createWorkspace}</h2>
+          <p>{t.welcomeSub}</p>
+
+          {/* Quick Demo Persona Launcher */}
+          {mode === 'sign-in' && (
+            <div className="persona-quick-grid">
+              <span className="eyebrow">ONE-CLICK HACKATHON DEMO PERSONAS</span>
+              <button
+                type="button"
+                className="quick-persona-card"
+                onClick={() => quickLogin('student@prism.demo')}
+              >
+                <div>
+                  <b>🟣 Aarav Sharma (Student)</b>
+                  <small>Denominator Misconception → Visual Fraction Bar Route</small>
+                </div>
+                <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                className="quick-persona-card"
+                onClick={() => quickLogin('diya@prism.demo')}
+              >
+                <div>
+                  <b>🟠 Diya Patel (Student)</b>
+                  <small>Prerequisite Gap → Equal-Parts Foundation Route</small>
+                </div>
+                <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                className="quick-persona-card"
+                onClick={() => quickLogin('kabir@prism.demo')}
+              >
+                <div>
+                  <b>🔵 Kabir Verma (Student)</b>
+                  <small>Calculation Slips → Scaffolded Practice Route</small>
+                </div>
+                <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                className="quick-persona-card"
+                onClick={() => quickLogin('meera@prism.demo')}
+              >
+                <div>
+                  <b>🟢 Meera Iyer (Student)</b>
+                  <small>Demonstrated Mastery → Recipe Scaling Extension Route</small>
+                </div>
+                <ChevronRight size={16} />
+              </button>
+              <button
+                type="button"
+                className="quick-persona-card"
+                onClick={() => quickLogin('teacher@prism.demo')}
+              >
+                <div>
+                  <b>👩‍🏫 Ms. Ananya (Teacher)</b>
+                  <small>Control Room · Teacher Intervention Compiler & Grouping</small>
+                </div>
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
+
+          {mode === 'register' && (
+            <>
+              <label>
+                {t.fullName}
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                />
+              </label>
+              <div className="role-select">
+                <button
+                  type="button"
+                  className={role === 'student' ? 'selected' : ''}
+                  onClick={() => setRole('student')}
+                >
+                  <GraduationCap /> {t.roleStudent}
+                </button>
+                <button
+                  type="button"
+                  className={role === 'teacher' ? 'selected' : ''}
+                  onClick={() => setRole('teacher')}
+                >
+                  <Users /> {t.roleTeacher}
+                </button>
+              </div>
+            </>
+          )}
+
+          <label>
+            {t.email}
+            <input
+              required
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="name@school.edu"
+            />
+          </label>
+          <label>
+            {t.password}
+            <input
+              required
+              minLength={8}
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+
+          {error && <div className="errorbox">{error}</div>}
+
+          <button type="submit" className="btn-primary" disabled={busy}>
+            {busy ? 'Please wait…' : mode === 'sign-in' ? 'Sign in with credentials' : 'Create secure account'}{' '}
+            <ArrowRight size={17} />
+          </button>
+        </form>
+      </section>
+    </main>
+  );
+}
+
+// ----------------------------------------------------
+// Student Adaptive Learning View
+// ----------------------------------------------------
+function StudentHome({
+  user,
+  token,
+  lang,
+  isOffline,
+  onQueueAttempt,
+  onSignOut,
+}: {
+  user: User;
+  token: string;
+  lang: Language;
+  isOffline: boolean;
+  onQueueAttempt: (item: QueuedAttempt) => void;
+  onSignOut: () => void;
+}) {
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [progress, setProgress] = useState<Progress[]>([]);
+  const [selected, setSelected] = useState<Unit | null>(null);
+  const [stage, setStage] = useState<'diagnostic' | 'practice' | 'test'>('diagnostic');
+  const [questions, setQuestions] = useState<Question[]>([]);
+  const [index, setIndex] = useState(0);
+  const [answer, setAnswer] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [error, setError] = useState('');
+  const [lastReason, setLastReason] = useState('');
+  const [showCelebration, setShowCelebration] = useState(false);
+  const t = TRANSLATIONS[lang];
+
+  const load = () =>
+    Promise.all([api.units(), api.progress(token)])
+      .then(([catalogue, profile]) => {
+        setUnits(catalogue);
+        setProgress(profile);
+      })
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    load();
+  }, [token]);
+
+  const start = async (unit: Unit, nextStage: 'diagnostic' | 'practice' | 'test' = 'diagnostic') => {
+    setError('');
+    setFeedback('');
+    setAnswer('');
+    setIndex(0);
+    setSelected(unit);
+    setStage(nextStage);
+    try {
+      const qList = await api.questions(unit.id, nextStage, token);
+      setQuestions(qList);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load activity');
+    }
+  };
+
+  const submit = async () => {
+    const question = questions[index];
+    if (!answer || !question || !selected) return;
+
+    const submission_id = crypto.randomUUID();
+
+    // If simulated offline or offline, queue locally!
+    if (isOffline) {
+      onQueueAttempt({
+        question_id: question.id,
+        response: answer,
+        stage,
+        submission_id,
+        unit_id: selected.id,
+        timestamp: new Date().toISOString(),
+      });
+      const isCorrect = answer === question.options[0] || answer.includes('/'); // heuristic for preview
+      setFeedback(`⚡ Saved in offline queue! Response will sync when connection is active.`);
+      return;
+    }
+
+    try {
+      const result = await api.attempt(
+        { question_id: question.id, response: answer, stage, submission_id },
+        token
+      );
+      setFeedback(`${result.correct ? t.correct : t.keepGoing}${result.feedback}`);
+      setLastReason(result.reason);
+
+      if (stage === 'test' && result.correct) {
+        setShowCelebration(true);
+      }
+
+      load();
+    } catch (e) {
+      // Network failed: fallback to queue!
+      onQueueAttempt({
+        question_id: question.id,
+        response: answer,
+        stage,
+        submission_id,
+        unit_id: selected.id,
+        timestamp: new Date().toISOString(),
+      });
+      setFeedback('⚡ Network interrupted: response queued locally for automatic sync.');
+    }
+  };
+
+  const currentProgress = selected && progress.find((item) => item.unit_id === selected.id);
+  const route = currentProgress?.recommendation || 'guided-practice';
+
+  if (selected) {
+    return (
+      <main className="workspace">
+        <section className="learning-view">
+          <button className="back" onClick={() => setSelected(null)}>
+            ← {t.allChapters}
+          </button>
+
+          <div className="lesson-heading">
+            <span className={`chapter-dot ${selected.color}`} />
+            <div>
+              <span className="eyebrow">
+                {t.boardTag} · CHAPTER {selected.number} · {stage.toUpperCase()}
+              </span>
+              <h1>{selected.title}</h1>
+              <p>{selected.summary}</p>
+            </div>
+          </div>
+
+          {error && <div className="errorbox">{error}</div>}
+
+          <div>
+            {/* ADAPT: Differentiated Learning Pod & Interactive Tools */}
+            {stage === 'practice' && (
+              <div className="adaptive-route-container">
+                {route === 'visual-support' && (
+                  <div className="adaptive-route-banner visual">
+                    <div className="route-badge-row">
+                      <Sparkles size={14} /> {t.visualSupportBanner}
+                    </div>
+                    <h3>Targeted Visual Workbench</h3>
+                    <p>{t.visualSupportExplanation}</p>
+                    <VisualFractionBarWorkbench lang={lang} />
+                  </div>
+                )}
+
+                {route === 'foundation' && (
+                  <div className="adaptive-route-banner foundation">
+                    <div className="route-badge-row">
+                      <Sparkles size={14} /> {t.foundationBanner}
+                    </div>
+                    <h3>Prerequisite Partitioning Tool</h3>
+                    <p>{t.foundationExplanation}</p>
+                    <FoundationStripWorkbench lang={lang} />
+                  </div>
+                )}
+
+                {route === 'guided-practice' && (
+                  <div className="adaptive-route-banner guided">
+                    <div className="route-badge-row">
+                      <Sparkles size={14} /> {t.guidedPracticeBanner}
+                    </div>
+                    <h3>Scaffolded Multiplier Guide</h3>
+                    <p>{t.guidedPracticeExplanation}</p>
+                    <GuidedPracticeWorkbench lang={lang} />
+                  </div>
+                )}
+
+                {route === 'extension' && (
+                  <div className="adaptive-route-banner extension">
+                    <div className="route-badge-row">
+                      <Sparkles size={14} /> {t.extensionBanner}
+                    </div>
+                    <h3>Kitchen Lab Proportion Challenge</h3>
+                    <p>{t.extensionExplanation}</p>
+                    <ExtensionRecipeWorkbench lang={lang} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Question Panel */}
+            <article className="question-panel">
+              {questions[index] ? (
+                <>
+                  <div className="activity-meta">
+                    <span>
+                      {stage === 'test'
+                        ? t.test
+                        : stage === 'practice'
+                        ? t.practice
+                        : t.diagnostic}
+                    </span>
+                    <span>
+                      Question {index + 1} of {questions.length}
+                    </span>
+                  </div>
+
+                  <h2>{questions[index].prompt}</h2>
+
+                  <div className="answers">
+                    {questions[index].options.map((option) => (
+                      <button
+                        key={option}
+                        disabled={!!feedback}
+                        className={answer === option ? 'selected' : ''}
+                        onClick={() => setAnswer(option)}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+
+                  {feedback ? (
+                    <div className="feedback">
+                      <p>{feedback}</p>
+                      {lastReason && (
+                        <p style={{ fontSize: '12px', color: '#047857' }}>
+                          <b>Diagnostic Engine Note:</b> {lastReason}
+                        </p>
+                      )}
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={() => {
+                          if (index + 1 < questions.length) {
+                            setIndex(index + 1);
+                            setAnswer('');
+                            setFeedback('');
+                          } else if (stage === 'diagnostic') {
+                            start(selected, 'practice');
+                          } else if (stage === 'practice') {
+                            start(selected, 'test');
+                          } else {
+                            setSelected(null);
+                          }
+                        }}
+                      >
+                        {index + 1 < questions.length
+                          ? t.nextQuestion
+                          : stage === 'test'
+                          ? t.finishChapter
+                          : t.continue}{' '}
+                        <ArrowRight size={17} />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={!answer}
+                      onClick={submit}
+                    >
+                      {t.checkAnswer} <CheckCircle2 size={17} />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p>Loading your learning activity…</p>
+              )}
+            </article>
+          </div>
+
+          {/* Learning Aside */}
+          <aside className="learning-aside">
+            <span className="eyebrow">{t.mastery}</span>
+            <b>{Math.round((currentProgress?.mastery || 0) * 100)}%</b>
+            <div className="progress-bar">
+              <i style={{ width: `${(currentProgress?.mastery || 0) * 100}%` }} />
+            </div>
+            <p>
+              {currentProgress?.evidence_count || 0} {t.evidencePoints}
+            </p>
+
+            {currentProgress?.misconception && (
+              <div
+                style={{
+                  background: '#fdf2f8',
+                  border: '1px solid #fbcfe8',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  fontSize: '11px',
+                  color: '#9d174d',
+                  marginTop: '10px',
+                }}
+              >
+                <b>Identified Barrier:</b> {currentProgress.misconception}
+              </div>
+            )}
+
+            <div className="stage-list">
+              <span className={stage === 'diagnostic' ? 'current' : ''}>1. {t.diagnostic}</span>
+              <span className={stage === 'practice' ? 'current' : ''}>2. {t.practice}</span>
+              <span className={stage === 'test' ? 'current' : ''}>3. {t.test}</span>
+            </div>
+          </aside>
+        </section>
+      </main>
+    );
+  }
+
+  const completed = progress.filter((item) => item.evidence_count > 0).length;
+
+  return (
+    <main className="workspace">
+      <section className="student-hero">
+        <div>
+          <span className="eyebrow">{t.boardTag}</span>
+          <h1>
+            Good afternoon, {user.name.split(' ')[0]}.
+          </h1>
+          <p>
+            Choose a chapter to begin a quick diagnostic, build understanding with adaptive visual
+            tools, and verify independent transfer.
+          </p>
+          <div className="hero-stats">
+            <span>
+              <b>{completed}</b> chapters started
+            </span>
+            <span>
+              <b>8</b> CBSE modules available
+            </span>
+            <span>
+              <b>Class VIII</b> NCERT reference
+            </span>
+          </div>
+        </div>
+        <div className="hero-mark">
+          <Sparkles />
+          <span>
+            Diagnose
+            <br />
+            Adapt
+            <br />
+            Verify
+          </span>
+        </div>
+      </section>
+
+      {error && <div className="page-error">{error}</div>}
+
+      <section className="catalogue-head">
+        <div>
+          <span className="eyebrow">CBSE MATHEMATICS COURSE CATALOGUE</span>
+          <h2>Mathematics, one concept at a time.</h2>
+        </div>
+        <span className="catalogue-count">{units.length} learning modules</span>
+      </section>
+
+      <section className="chapter-grid">
+        {units.map((unit) => {
+          const item = progress.find((p) => p.unit_id === unit.id);
+          const hasEvidence = item && item.evidence_count > 0;
+          return (
+            <article className="chapter-card" key={unit.id}>
+              <div className="chapter-card-top">
+                <span className={`chapter-dot ${unit.color}`} />
+                <span>CHAPTER {unit.number.toString().padStart(2, '0')}</span>
+              </div>
+              <h3>{unit.title}</h3>
+              <p>{unit.summary}</p>
+              <div className="card-bottom">
+                <span>
+                  <Clock3 size={14} /> {unit.minutes} min
+                </span>
+                <span>
+                  {hasEvidence ? `${Math.round(item.mastery * 100)}% mastery` : 'Not started'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => start(unit, hasEvidence ? 'practice' : 'diagnostic')}
+              >
+                {hasEvidence ? 'Continue chapter' : 'Start chapter'} <ArrowRight size={16} />
+              </button>
+            </article>
+          );
+        })}
+      </section>
+    </main>
+  );
+}
+
+// ----------------------------------------------------
+// Teacher Control Room & Intervention Compiler
+// ----------------------------------------------------
+function TeacherHome({
+  user,
+  token,
+  lang,
+  onSignOut,
+}: {
+  user: User;
+  token: string;
+  lang: Language;
+  onSignOut: () => void;
+}) {
+  const [data, setData] = useState<WorkspaceData | null>(null);
+  const [error, setError] = useState('');
+  const [activeEditPlan, setActiveEditPlan] = useState<Plan | null>(null);
+  const [activeDossierStudent, setActiveDossierStudent] = useState<StudentDetail | null>(null);
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const t = TRANSLATIONS[lang];
+
+  const loadWorkspace = () =>
+    api
+      .workspace(token)
+      .then(setData)
+      .catch((e) => setError(e.message));
+
+  useEffect(() => {
+    loadWorkspace();
+  }, [token]);
+
+  const totalEvidence = data?.learners.reduce((sum, l) => sum + l.evidence_count, 0) || 0;
+  const avgMastery =
+    data && data.learners.length > 0
+      ? Math.round((data.learners.reduce((s, l) => s + l.mastery, 0) / data.learners.length) * 100)
+      : 0;
+
+  const handleApprovePlan = async (planId: number) => {
+    try {
+      await api.updateIntervention(planId, { status: 'approved' }, token);
+      loadWorkspace();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to approve plan');
+    }
+  };
+
+  const handleRejectPlan = async (planId: number) => {
+    try {
+      await api.updateIntervention(planId, { status: 'rejected' }, token);
+      loadWorkspace();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to reject plan');
+    }
+  };
+
+  const handleSavePlanEdit = async (updated: Partial<Plan>) => {
+    if (!activeEditPlan) return;
+    try {
+      await api.updateIntervention(
+        activeEditPlan.id,
+        {
+          activity: updated.activity,
+          duration: updated.duration,
+          outcome: updated.outcome,
+          teacher_notes: updated.teacher_notes,
+          status: updated.status || 'modified',
+          student_codes: updated.student_codes,
+        },
+        token
+      );
+      loadWorkspace();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to save modifications');
+    }
+  };
+
+  const handleInspectStudent = async (code: string) => {
+    try {
+      const detail = await api.studentDetail(code, token);
+      setActiveDossierStudent(detail);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unable to load student dossier');
+    }
+  };
+
+  return (
+    <main className="workspace">
+      <section className="teacher-head">
+        <div>
+          <span className="eyebrow">
+            {t.boardTag} · SECTION {data?.class_code || '8A-CBSE'}
+          </span>
+          <h1>{t.teacherWorkspace}</h1>
+          <p>{t.interventionSub}</p>
+        </div>
+
+        <div className="teacher-head-actions">
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => setShowPrintModal(true)}
+          >
+            <FileText size={16} /> {t.exportPlan}
+          </button>
+          <button type="button" className="btn-secondary" onClick={loadWorkspace}>
+            {t.refreshData}
+          </button>
+        </div>
+      </section>
+
+      {error && <div className="page-error">{error}</div>}
+
+      {/* Professional Metrics */}
+      <section className="metric-grid professional">
+        <article>
+          <span>{t.activeLearners}</span>
+          <b>{data?.learners.length || 0}</b>
+          <small>Enrolled in Class 8-A</small>
+        </article>
+        <article>
+          <span>Average Concept Mastery</span>
+          <b>{avgMastery}%</b>
+          <small>Across active learning modules</small>
+        </article>
+        <article>
+          <span>{t.evidenceCollected}</span>
+          <b>{totalEvidence}</b>
+          <small>Observable student responses</small>
+        </article>
+      </section>
+
+      {/* 45-Minute Lesson Timeline */}
+      <LessonTimelineSchedule />
+
+      {/* Teacher Columns: Intervention Compiler & Learner Pulse */}
+      <section className="teacher-columns">
+        {/* Left Column: Teacher Intervention Compiler */}
+        <article className="teacher-panel">
+          <div className="panel-title">
+            <div>
+              <span className="eyebrow">{t.interventionReview}</span>
+              <h2>Teacher-Approved Small Groups</h2>
+            </div>
+            <span className="badge-pill purple">Decision Support Active</span>
+          </div>
+
+          {data?.interventions && data.interventions.length > 0 ? (
+            data.interventions.map((plan) => (
+              <section key={plan.id} className={`plan-card ${plan.status}`}>
+                <div className="plan-card-header">
+                  <span className={`badge-pill ${plan.confidence === 'high' ? 'green' : 'gold'}`}>
+                    {plan.confidence.toUpperCase()} CONFIDENCE
+                  </span>
+                  <span
+                    className={`badge-pill ${
+                      plan.status === 'approved'
+                        ? 'green'
+                        : plan.status === 'modified'
+                        ? 'teal'
+                        : plan.status === 'rejected'
+                        ? 'gray'
+                        : 'gold'
+                    }`}
+                  >
+                    {plan.status.toUpperCase()}
+                  </span>
+                </div>
+
+                <h3>{plan.barrier}</h3>
+                <p>{plan.evidence}</p>
+
+                <div className="plan-info">
+                  <span>
+                    <b>{t.studentsInPod}</b>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {plan.student_codes.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          className="badge-pill purple"
+                          style={{ cursor: 'pointer', border: 'none' }}
+                          onClick={() => handleInspectStudent(c)}
+                          title="Click to inspect this learner's dossier"
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </span>
+                  <span>
+                    <b>{t.suggestedActivity}</b>
+                    {plan.activity}
+                  </span>
+                  <span>
+                    <b>{t.timeAllocation}</b>
+                    {plan.duration}
+                  </span>
+                </div>
+
+                {plan.teacher_notes && (
+                  <div className="plan-notes-banner">
+                    <b>Teacher Notes:</b> {plan.teacher_notes}
+                  </div>
+                )}
+
+                {/* Direct Teacher Intervention Action Bar */}
+                <div className="plan-action-bar">
+                  <button
+                    type="button"
+                    className="btn-approve"
+                    onClick={() => handleApprovePlan(plan.id)}
+                  >
+                    <CheckCircle2 size={14} /> {t.approve}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-modify"
+                    onClick={() => setActiveEditPlan(plan)}
+                  >
+                    <Sparkles size={14} /> {t.modify}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-reject"
+                    onClick={() => handleRejectPlan(plan.id)}
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </section>
+            ))
+          ) : (
+            <p>Loading compiled interventions…</p>
+          )}
+        </article>
+
+        {/* Right Column: Classroom Evidence Pulse */}
+        <article className="teacher-panel learner-panel">
+          <div className="panel-title">
+            <div>
+              <span className="eyebrow">CLASSROOM EVIDENCE PULSE</span>
+              <h2>{t.currentClassView}</h2>
+            </div>
+            <span className="badge-pill teal">Click to inspect</span>
+          </div>
+
+          <div className="learner-list">
+            {data?.learners.map((learner) => (
+              <div
+                key={learner.code}
+                onClick={() => handleInspectStudent(learner.code)}
+                title="Click to view detailed Learner Evidence Dossier"
+              >
+                <span className="learner-avatar">{learner.name.slice(0, 1)}</span>
+                <div>
+                  <b>{learner.name}</b>
+                  <small>
+                    {learner.code} · {learner.evidence_count} evidence points
+                  </small>
+                  {learner.misconception && (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        background: '#fdf2f8',
+                        color: '#9d174d',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        marginTop: '2px',
+                      }}
+                    >
+                      {learner.misconception}
+                    </span>
+                  )}
+                </div>
+                <div className="mini-progress">
+                  <i style={{ width: `${learner.mastery * 100}%` }} />
+                </div>
+                <strong>{Math.round(learner.mastery * 100)}%</strong>
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
+      {/* Edit Plan Modal */}
+      {activeEditPlan && (
+        <EditPlanModal
+          plan={activeEditPlan}
+          allLearners={data?.learners || []}
+          lang={lang}
+          onSave={handleSavePlanEdit}
+          onClose={() => setActiveEditPlan(null)}
+        />
+      )}
+
+      {/* Student Dossier Modal */}
+      {activeDossierStudent && (
+        <StudentDossierModal
+          detail={activeDossierStudent}
+          lang={lang}
+          onClose={() => setActiveDossierStudent(null)}
+        />
+      )}
+
+      {/* Printable CBSE Lesson Plan Modal */}
+      {showPrintModal && data && (
+        <PrintPlanModal
+          plans={data.interventions}
+          classCode={data.class_code}
+          teacherName={data.teacher_name || user.name}
+          onClose={() => setShowPrintModal(false)}
+        />
+      )}
+    </main>
+  );
+}
+
+// ----------------------------------------------------
+// Main App Root Component
+// ----------------------------------------------------
+export default function App() {
+  const [session, setSession] = useState<Session | null>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(sessionKey) || 'null');
+    } catch {
+      return null;
+    }
+  });
+
+  const [lang, setLang] = useState<Language>('en');
+  const [isOffline, setIsOffline] = useState(false);
+  const [offlineQueue, setOfflineQueue] = useState<QueuedAttempt[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(offlineQueueKey) || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [showTour, setShowTour] = useState(false);
+
+  const signOut = () => {
+    localStorage.removeItem(sessionKey);
+    setSession(null);
+  };
+
+  const selectPersona = async (email: string) => {
+    try {
+      const res = await api.login(email, 'PrismDemo!2026');
+      localStorage.setItem(sessionKey, JSON.stringify(res));
+      setSession(res);
+    } catch (e) {
+      console.error('Persona login error:', e);
+    }
+  };
+
+  const handleQueueAttempt = (item: QueuedAttempt) => {
+    const updated = [...offlineQueue, item];
+    setOfflineQueue(updated);
+    localStorage.setItem(offlineQueueKey, JSON.stringify(updated));
+  };
+
+  const syncOfflineQueue = async () => {
+    if (!session || offlineQueue.length === 0) return;
+    try {
+      for (const item of offlineQueue) {
+        await api.attempt(
+          {
+            question_id: item.question_id,
+            response: item.response,
+            stage: item.stage,
+            submission_id: item.submission_id,
+          },
+          session.access_token
+        );
+      }
+      setOfflineQueue([]);
+      localStorage.removeItem(offlineQueueKey);
+      setIsOffline(false);
+      alert('All queued responses synced successfully to PRISM server!');
+    } catch (e) {
+      alert('Sync failed: ' + (e instanceof Error ? e.message : 'Please check connection'));
+    }
+  };
+
+  const handleResetDemo = async () => {
+    try {
+      await api.resetDemo();
+      alert('Demo data has been reset to initial pristine archetypes.');
+      window.location.reload();
+    } catch (e) {
+      alert('Reset failed: ' + (e instanceof Error ? e.message : ''));
+    }
+  };
+
+  if (!session) {
+    return (
+      <>
+        <AuthScreen
+          onAuthenticated={setSession}
+          lang={lang}
+          onLangChange={setLang}
+          onOpenTour={() => setShowTour(true)}
+        />
+        {showTour && <HackathonTourModal onClose={() => setShowTour(false)} />}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Topbar
+        user={session.user}
+        lang={lang}
+        onLangChange={setLang}
+        isOffline={isOffline}
+        onToggleOffline={() => setIsOffline(!isOffline)}
+        queuedCount={offlineQueue.length}
+        onSyncQueue={syncOfflineQueue}
+        onResetDemo={handleResetDemo}
+        onOpenTour={() => setShowTour(true)}
+        onSelectPersona={selectPersona}
+        onSignOut={signOut}
+      />
+
+      {session.user.role === 'teacher' ? (
+        <TeacherHome
+          user={session.user}
+          token={session.access_token}
+          lang={lang}
+          onSignOut={signOut}
+        />
+      ) : (
+        <StudentHome
+          user={session.user}
+          token={session.access_token}
+          lang={lang}
+          isOffline={isOffline}
+          onQueueAttempt={handleQueueAttempt}
+          onSignOut={signOut}
+        />
+      )}
+
+      {showTour && <HackathonTourModal onClose={() => setShowTour(false)} />}
+    </>
+  );
+}
