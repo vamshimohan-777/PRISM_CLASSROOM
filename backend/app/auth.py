@@ -4,6 +4,7 @@ The application uses PBKDF2 password hashes and signed, expiring bearer tokens.
 For a production deployment, set PRISM_AUTH_SECRET to a long random value and
 replace SQLite with a managed database.
 """
+
 from __future__ import annotations
 
 import base64
@@ -56,4 +57,4 @@ def read_token(value: str | None) -> dict:
             raise ValueError("expired or invalid")
         return data
     except (ValueError, KeyError, json.JSONDecodeError):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please sign in again.")
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please sign in again.") from None

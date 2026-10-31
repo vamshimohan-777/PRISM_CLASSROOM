@@ -1,0 +1,17 @@
+[project]
+name = "prism-classroom-api"
+version = "0.2.0"
+description = "Rules-based adaptive-learning API for the PRISM Classroom prototype"
+requires-python = ">=3.11"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["E501", "B008"]  # long data literals; FastAPI Depends() defaults
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

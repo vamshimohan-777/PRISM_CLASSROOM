@@ -1,2 +1,1 @@
 """PRISM Classroom application package."""
-
