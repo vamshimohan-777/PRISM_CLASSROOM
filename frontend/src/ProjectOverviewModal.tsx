@@ -4,7 +4,7 @@ interface Props {
   onClose: () => void;
 }
 
-export function HackathonTourModal({ onClose }: Props) {
+export function ProjectOverviewModal({ onClose }: Props) {
   return (
     <div className="modal-backdrop">
       <div className="modal-container tour-modal">
@@ -37,7 +37,7 @@ export function HackathonTourModal({ onClose }: Props) {
             <div className="card-icon"><Cpu className="teal-text" size={24} /></div>
             <h4>2. Deterministic, Explainable Engine</h4>
             <p>
-              Unlike unpredictable black-box generative models, PRISM uses a <b>deterministic rules engine + directed acyclic concept map</b>. Every diagnosis, confidence score, and route hypothesis is 100% reproducible and audit-proof.
+              PRISM uses a <b>deterministic rules engine and a prerequisite concept map</b> instead of a trained model. The same answers always produce the same route, and each route shows the rule and evidence behind it.
             </p>
           </div>
 
@@ -63,9 +63,9 @@ export function HackathonTourModal({ onClose }: Props) {
             <div className="card-icon"><Globe2 className="green-text" size={24} /></div>
             <h4>5. Built for Indian Realities</h4>
             <p>
-              • <b>Languages:</b> Instant English, Hindi (हिंदी), and Telugu (తెలుగు) toggle.<br />
-              • <b>Curriculum:</b> 100% CBSE Class VIII NCERT aligned reference.<br />
-              • <b>Connectivity:</b> Offline queueing with idempotent sync for low-bandwidth schools.
+              • <b>Languages:</b> English, Hindi (हिंदी), and Telugu (తెలుగు) toggle.<br />
+              • <b>Curriculum:</b> one CBSE Class VIII unit, using NCERT as the reference text.<br />
+              • <b>Connectivity:</b> answers are queued on the device and synced without duplicates when the connection returns.
             </p>
           </div>
 
@@ -79,7 +79,7 @@ export function HackathonTourModal({ onClose }: Props) {
         </div>
 
         <div className="archetype-showcase-bar">
-          <h5>The 4 Proved Learner Archetypes (Quick Switch available in Top Bar):</h5>
+          <h5>Four simulated learner profiles (switch between them from the top bar):</h5>
           <div className="archetype-pills">
             <span className="arc-pill visual">
               <b>Aarav:</b> Denominator Magnitude Misconception (1/8 &gt; 1/3 error) → Visual Fraction Bar Route
@@ -98,7 +98,7 @@ export function HackathonTourModal({ onClose }: Props) {
 
         <div className="tour-footer">
           <button className="btn-primary" onClick={onClose}>
-            Explore Live PRISM Prototype <CheckCircle2 size={16} />
+            Open the prototype <CheckCircle2 size={16} />
           </button>
         </div>
       </div>

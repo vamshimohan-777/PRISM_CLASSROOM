@@ -15,7 +15,7 @@ export const TRANSLATIONS = {
     fullName: 'Full name',
     roleStudent: 'Student',
     roleTeacher: 'Teacher',
-    demoAccess: 'Quick Hackathon Demo Personas',
+    demoAccess: 'Demo accounts (simulated learners)',
     diagnostic: 'Quick Diagnostic',
     practice: 'Targeted Practice',
     test: 'Transfer Verification',

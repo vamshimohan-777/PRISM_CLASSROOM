@@ -1,0 +1,9 @@
+{
+  "name": "PRISM Classroom",
+  "short_name": "PRISM",
+  "description": "Misconception-aware adaptive learning that keeps teachers at the centre.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#5b21b6"
+}

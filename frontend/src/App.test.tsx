@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import App from './App';
 
 describe('authentication experience', () => {
-  it('presents a secure sign-in, CBSE framework, and hackathon demo personas', () => {
+  it('shows sign-in, the CBSE framing and the demo accounts', () => {
     render(<App />);
     expect(screen.getByText(/Misconception-aware learning/i)).toBeTruthy();
     expect(screen.getByText(/CBSE · CLASS VIII MATHEMATICS/i)).toBeTruthy();

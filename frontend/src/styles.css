@@ -1003,8 +1003,13 @@ h2, h3, h4 { font-family: var(--font-heading); color: var(--text-main); }
 }
 .metric-grid.professional {
   margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
 }
 .metric-grid.professional article {
+  display: flex;
+  flex-direction: column;
   background: #fff;
   border: 1px solid var(--border-card);
   border-radius: 14px;

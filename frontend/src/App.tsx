@@ -46,7 +46,7 @@ import {
   PrintPlanModal,
   LessonTimelineSchedule,
 } from './TeacherModals';
-import { HackathonTourModal } from './HackathonTourModal';
+import { ProjectOverviewModal } from './ProjectOverviewModal';
 
 type Session = Auth;
 const sessionKey = 'prism-session';
@@ -72,7 +72,7 @@ function Brand() {
 }
 
 // ----------------------------------------------------
-// Topbar with Judge Showcase Bar
+// Topbar
 // ----------------------------------------------------
 function Topbar({
   user,
@@ -107,8 +107,8 @@ function Topbar({
         <Brand />
 
         <div className="showcase-actions">
-          {/* Quick Persona Switcher for Hackathon Judges */}
-          <div className="persona-switcher" title="Quick Persona Switcher for Hackathon Judges">
+          {/* Switch between the seeded demo accounts without signing out */}
+          <div className="persona-switcher" title="Switch demo account">
             <span className="persona-label">Persona:</span>
             <button
               type="button"
@@ -116,7 +116,7 @@ function Topbar({
               onClick={() => onSelectPersona('student@prism.demo')}
               title="Aarav: Denominator Misconception (Visual Route)"
             >
-              🟣 Aarav (Visual)
+              Aarav (Visual)
             </button>
             <button
               type="button"
@@ -124,7 +124,7 @@ function Topbar({
               onClick={() => onSelectPersona('diya@prism.demo')}
               title="Diya: Prerequisite Gap (Foundation Route)"
             >
-              🟠 Diya (Foundation)
+              Diya (Foundation)
             </button>
             <button
               type="button"
@@ -132,7 +132,7 @@ function Topbar({
               onClick={() => onSelectPersona('kabir@prism.demo')}
               title="Kabir: Calculation Slips (Guided Route)"
             >
-              🔵 Kabir (Guided)
+              Kabir (Guided)
             </button>
             <button
               type="button"
@@ -140,7 +140,7 @@ function Topbar({
               onClick={() => onSelectPersona('meera@prism.demo')}
               title="Meera: High Mastery (Recipe Lab Route)"
             >
-              🟢 Meera (Extension)
+              Meera (Extension)
             </button>
             <button
               type="button"
@@ -148,7 +148,7 @@ function Topbar({
               onClick={() => onSelectPersona('teacher@prism.demo')}
               title="Ms. Ananya: Teacher Control Room & Intervention Compiler"
             >
-              👩‍🏫 Ms. Ananya (Teacher)
+              Ms. Ananya (Teacher)
             </button>
           </div>
 
@@ -202,7 +202,7 @@ function Topbar({
 
           {/* Architecture / Tour Modal */}
           <button type="button" className="tour-btn" onClick={onOpenTour}>
-            <Sparkles size={14} /> Brief & Architecture
+            <Sparkles size={14} /> About PRISM
           </button>
 
           {/* Reset Demo */}
@@ -226,7 +226,7 @@ function Topbar({
 }
 
 // ----------------------------------------------------
-// Authentication & Hackathon Quick Start
+// Authentication and demo sign-in
 // ----------------------------------------------------
 function AuthScreen({
   onAuthenticated,
@@ -309,7 +309,7 @@ function AuthScreen({
             </button>
           </div>
           <button type="button" className="tour-btn" onClick={onOpenTour}>
-            <Sparkles size={14} /> Code Kernel '26 Brief
+            <Sparkles size={14} /> About PRISM
           </button>
           <span className="secure">
             <LockKeyhole size={14} /> CBSE Mathematics 2026–27
@@ -328,7 +328,7 @@ function AuthScreen({
 
           <div className="auth-points">
             <span>
-              <CheckCircle2 /> <b>Transparent Rules Engine:</b> Explainable hypotheses, zero hallucinations.
+              <CheckCircle2 /> <b>Transparent Rules Engine:</b> every recommendation names the rule and evidence behind it.
             </span>
             <span>
               <CheckCircle2 /> <b>3-Part Adaptation:</b> Visual learn, scaffolded solve, independent transfer test.
@@ -373,7 +373,7 @@ function AuthScreen({
                 onClick={() => quickLogin('student@prism.demo')}
               >
                 <div>
-                  <b>🟣 Aarav Sharma (Student)</b>
+                  <b>Aarav Sharma (Student)</b>
                   <small>Denominator Misconception → Visual Fraction Bar Route</small>
                 </div>
                 <ChevronRight size={16} />
@@ -384,7 +384,7 @@ function AuthScreen({
                 onClick={() => quickLogin('diya@prism.demo')}
               >
                 <div>
-                  <b>🟠 Diya Patel (Student)</b>
+                  <b>Diya Patel (Student)</b>
                   <small>Prerequisite Gap → Equal-Parts Foundation Route</small>
                 </div>
                 <ChevronRight size={16} />
@@ -395,7 +395,7 @@ function AuthScreen({
                 onClick={() => quickLogin('kabir@prism.demo')}
               >
                 <div>
-                  <b>🔵 Kabir Verma (Student)</b>
+                  <b>Kabir Verma (Student)</b>
                   <small>Calculation Slips → Scaffolded Practice Route</small>
                 </div>
                 <ChevronRight size={16} />
@@ -406,7 +406,7 @@ function AuthScreen({
                 onClick={() => quickLogin('meera@prism.demo')}
               >
                 <div>
-                  <b>🟢 Meera Iyer (Student)</b>
+                  <b>Meera Iyer (Student)</b>
                   <small>Demonstrated Mastery → Recipe Scaling Extension Route</small>
                 </div>
                 <ChevronRight size={16} />
@@ -417,7 +417,7 @@ function AuthScreen({
                 onClick={() => quickLogin('teacher@prism.demo')}
               >
                 <div>
-                  <b>👩‍🏫 Ms. Ananya (Teacher)</b>
+                  <b>Ms. Ananya (Teacher)</b>
                   <small>Control Room · Teacher Intervention Compiler & Grouping</small>
                 </div>
                 <ChevronRight size={16} />
@@ -562,8 +562,7 @@ function StudentHome({
         unit_id: selected.id,
         timestamp: new Date().toISOString(),
       });
-      const isCorrect = answer === question.options[0] || answer.includes('/'); // heuristic for preview
-      setFeedback(`⚡ Saved in offline queue! Response will sync when connection is active.`);
+      setFeedback('Saved on this device. It will sync when the connection is back.');
       return;
     }
 
@@ -590,7 +589,7 @@ function StudentHome({
         unit_id: selected.id,
         timestamp: new Date().toISOString(),
       });
-      setFeedback('⚡ Network interrupted: response queued locally for automatic sync.');
+      setFeedback('Connection lost. Your answer is saved on this device and will sync automatically.');
     }
   };
 
@@ -1011,7 +1010,7 @@ function TeacherHome({
           <div className="panel-title">
             <div>
               <span className="eyebrow">{t.interventionReview}</span>
-              <h2>Teacher-Approved Small Groups</h2>
+              <h2>Suggested Small Groups</h2>
             </div>
             <span className="badge-pill purple">Decision Support Active</span>
           </div>
@@ -1235,6 +1234,10 @@ export default function App() {
 
   const syncOfflineQueue = async () => {
     if (!session || offlineQueue.length === 0) return;
+    // Replay in order and drop each item only once the server has it. The
+    // server de-duplicates on submission_id, so a retry after a partial
+    // failure cannot double-count an answer.
+    let remaining = [...offlineQueue];
     try {
       for (const item of offlineQueue) {
         await api.attempt(
@@ -1246,20 +1249,33 @@ export default function App() {
           },
           session.access_token
         );
+        remaining = remaining.slice(1);
       }
-      setOfflineQueue([]);
-      localStorage.removeItem(offlineQueueKey);
       setIsOffline(false);
-      alert('All queued responses synced successfully to PRISM server!');
     } catch (e) {
-      alert('Sync failed: ' + (e instanceof Error ? e.message : 'Please check connection'));
+      alert('Sync paused: ' + (e instanceof Error ? e.message : 'please check the connection') + '. Unsynced answers are kept.');
+    } finally {
+      setOfflineQueue(remaining);
+      if (remaining.length) localStorage.setItem(offlineQueueKey, JSON.stringify(remaining));
+      else localStorage.removeItem(offlineQueueKey);
     }
   };
+
+  // Follow the browser's real connectivity as well as the manual toggle.
+  useEffect(() => {
+    const goOffline = () => setIsOffline(true);
+    const goOnline = () => setIsOffline(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
 
   const handleResetDemo = async () => {
     try {
       await api.resetDemo();
-      alert('Demo data has been reset to initial pristine archetypes.');
       window.location.reload();
     } catch (e) {
       alert('Reset failed: ' + (e instanceof Error ? e.message : ''));
@@ -1275,7 +1291,7 @@ export default function App() {
           onLangChange={setLang}
           onOpenTour={() => setShowTour(true)}
         />
-        {showTour && <HackathonTourModal onClose={() => setShowTour(false)} />}
+        {showTour && <ProjectOverviewModal onClose={() => setShowTour(false)} />}
       </>
     );
   }
@@ -1314,7 +1330,7 @@ export default function App() {
         />
       )}
 
-      {showTour && <HackathonTourModal onClose={() => setShowTour(false)} />}
+      {showTour && <ProjectOverviewModal onClose={() => setShowTour(false)} />}
     </>
   );
 }
