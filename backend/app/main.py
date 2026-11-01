@@ -1,4 +1,5 @@
 import secrets
+import os
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -14,7 +15,19 @@ from .auth import create_token, hash_password, read_token, verify_password
 validate_graph()
 Base.metadata.create_all(bind=engine)
 app = FastAPI(title="PRISM Classroom API", version="1.0.0")
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"], allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
+origins_env = os.getenv("CORS_ORIGINS", "")
+allowed_origins = [o.strip() for o in origins_env.split(",") if o.strip()] or [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.netlify\.app",
+    allow_methods=["*"],
+    allow_headers=["*"],
+    allow_credentials=True,
+)
 
 def current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
     payload = read_token(authorization)
@@ -382,3 +395,26 @@ def decide_intervention(intervention_id:int, payload:InterventionDecision, x_dem
         "outcome": record.outcome,
         "student_codes": [db.get(Student, i).code for i in record.student_ids if db.get(Student, i)]
     }
+
+# ----------------------------------------------------
+# Production SPA Static File Serving
+# Enables 1-Click All-in-One Deployment (Frontend + Backend on single port)
+# ----------------------------------------------------
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+if not os.path.isdir(frontend_dist):
+    frontend_dist = os.path.abspath(os.path.join(os.getcwd(), "frontend", "dist"))
+
+if os.path.isdir(frontend_dist):
+    assets_dir = os.path.join(frontend_dist, "assets")
+    if os.path.isdir(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def serve_spa(full_path: str):
+        file_path = os.path.join(frontend_dist, full_path)
+        if full_path and os.path.isfile(file_path):
+            return FileResponse(file_path)
+        return FileResponse(os.path.join(frontend_dist, "index.html"))

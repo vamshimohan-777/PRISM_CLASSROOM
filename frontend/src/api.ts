@@ -1,4 +1,4 @@
-export const API = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
+export const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api' : 'http://127.0.0.1:8000/api');
 
 export type User = { id: number; name: string; email: string; role: 'student' | 'teacher'; student_code?: string | null };
 export type Auth = { access_token: string; token_type: 'bearer'; user: User };

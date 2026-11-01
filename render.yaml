@@ -1,0 +1,12 @@
+# Render Blueprint for PRISM CLASSROOM
+# Deploys both React Frontend and FastAPI Backend as a single unified service in 1 click
+services:
+  - type: web
+    name: prism-classroom
+    env: docker
+    plan: free
+    dockerfilePath: Dockerfile
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 8000

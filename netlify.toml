@@ -1,0 +1,25 @@
+# Netlify Configuration for PRISM Classroom
+
+[build]
+  base = "frontend"
+  publish = "dist"
+  command = "npm run build"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Optional: Proxy /api requests to your backend (e.g., Render, Railway, Fly.io)
+# If VITE_API_URL is set in Netlify environment variables, the app connects directly.
+# Alternatively, uncomment the redirect below to proxy all /api requests through Netlify:
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://your-backend-service.onrender.com/api/:splat"
+#   status = 200
+#   force = true
+
+# SPA Fallback: Direct all other routes to index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
