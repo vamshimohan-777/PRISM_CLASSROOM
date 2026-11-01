@@ -1,163 +1,334 @@
 # PRISM CLASSROOM
 > **Misconception-aware adaptive learning that keeps teachers at the centre.**  
 > *One concept. Many learning paths. One teacher-led classroom.*  
-> **Submission for Code Kernel '26 · Decode Round**
+> **Submission for Code Kernel '26 · Decode Round | Track: EdTech / Adaptive Learning**
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat-square&logo=vite)](https://vitejs.dev)
+[![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python)](https://python.org)
+[![Tests](https://img.shields.io/badge/Tests-14%2F14%20Pytest%20%2B%20Vitest%20Passed-brightgreen?style=flat-square)](#09--automated-test-suite)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
 ---
 
-## 01 | Executive Overview
-
-Students in Classes 6–10 learn at different speeds and carry diverse prerequisite foundations. End-of-chapter tests reveal learning gaps too late, while teachers managing large classes of 45–60 learners cannot easily identify individual learning barriers. Most conventional EdTech platforms attempt to replace the educator with an autonomous, black-box AI tutor.
-
-**PRISM Classroom** is an adaptive-learning copilot designed around teacher-in-the-loop decision support. It diagnoses misconceptions using short, targeted activities, adapts the learning route (visual representation, scaffolding, or extension challenge), verifies independent transfer, and empowers teachers with its signature **Teacher Intervention Compiler**—automatically compiling individual learning evidence into an actionable, editable classroom lesson plan.
+## Table of Contents
+1. [Executive Overview & Problem Statement](#01--executive-overview--problem-statement)
+2. [The 4 Proved Learner Archetypes](#02--the-4-proved-learner-archetypes)
+3. [The Three Pillars of Adaptation (LEARN · SOLVE · TEST)](#03--the-three-pillars-of-adaptation-learn--solve--test)
+4. [Signature Innovation: Teacher Intervention Compiler](#04--signature-innovation-teacher-intervention-compiler)
+5. [Indian Classroom Realities & Localization](#05--indian-classroom-realities--localization)
+6. [System Architecture & Visual Artifacts](#06--system-architecture--visual-artifacts)
+7. [Deterministic Rules Engine & Mathematical Model](#07--deterministic-rules-engine--mathematical-model)
+8. [Complete REST API Specification](#08--complete-rest-api-specification)
+9. [Automated Test Suite & Verification](#09--automated-test-suite)
+10. [Local Quick Start Guide](#10--local-quick-start-guide)
+11. [3-Minute Demo Video Recording Script](#11--3-minute-demo-video-recording-script)
+12. [Code Kernel '26 Compliance Matrix](#12--code-kernel-26-compliance-matrix)
 
 ---
 
-## 02 | The 4 Proved Learner Archetypes & Hackathon Showcase
+## 01 | Executive Overview & Problem Statement
 
-PRISM comes pre-seeded with 4 distinct simulated learner profiles demonstrating the complete adaptive cycle for **CBSE Class VIII Mathematics (Rational Numbers & Equivalent Fractions)**:
+### The Problem in Indian Classrooms
+In Classes 6–10 across Indian schools (CBSE/State Boards), teachers manage large sections of **45 to 60 learners**. Students enter the classroom with vastly diverse foundational prerequisites:
+- **Summative tests reveal learning gaps too late**: Once a chapter exam is graded, the class has already moved to the next syllabus topic.
+- **One-size-fits-all instruction fails both ends**: Struggling learners fall further behind, while high-mastery learners disengage from lack of challenge.
+- **The flaw of conventional EdTech**: Most commercial platforms attempt to replace the educator with an autonomous, black-box AI tutor. These platforms isolate children behind headphones, generate unpredictable LLM hallucinations, and fail to provide teachers with actionable classroom decision support.
 
-| Learner | Archetype | Observable Diagnostic Pattern | Prescribed Adaptive Route | Signature Tool |
+### The PRISM Solution
+**PRISM Classroom** is a **teacher-in-the-loop adaptive learning copilot**. Rather than replacing the educator, PRISM acts as a continuous diagnostic and instructional assistant:
+1. **Diagnoses Specific Misconceptions**: Uses short, targeted diagnostic questions that classify latent misconceptions (e.g. denominator-magnitude confusion) rather than just marking an answer "wrong".
+2. **Adapts the Learning Modality**: Dynamically adjusts visual representation (interactive SVG fraction bars), provides prerequisite foundation scaffolding, or assigns extension challenges.
+3. **Verifies Independent Transfer**: Validates understanding on an unguided, novel application problem before upgrading estimated mastery.
+4. **Empowers the Teacher**: Automatically compiles individual evidence pulses into the **Teacher Intervention Compiler**—providing editable small-group pods, a 45-minute lesson pacing schedule, individual audit dossiers, and printable CBSE inspection briefings.
+
+---
+
+## 02 | The 4 Proved Learner Archetypes
+
+PRISM comes pre-seeded with 4 distinct simulated student profiles and 1 lead teacher profile for **CBSE Class VIII Mathematics (Chapter 1: Rational Numbers & Equivalent Fractions)**:
+
+| Learner | Archetype | Observable Diagnostic Pattern | Prescribed Adaptive Route | Signature Interactive Manipulative |
 | :--- | :--- | :--- | :--- | :--- |
-| **🟣 Aarav Sharma** (`STU-VISUAL`) | **Misconception** | Denominator-magnitude confusion (believes $1/8 > 1/3$ because $8 > 3$) | **Visual Support** | Interactive Fraction Bar Comparator |
-| **🟠 Diya Patel** (`STU-FOUNDATION`) | **Prerequisite Gap** | Incomplete understanding of fraction anatomy (equal parts vs whole) | **Foundation Track** | Equal-Parts Partitioning Workbench |
-| **🔵 Kabir Verma** (`STU-CALC`) | **Calculation Slips** | Understands equivalence concept but makes unequal arithmetic multiplier slips | **Guided Practice** | Scaffolded Multiplier & Simplification Grid |
-| **🟢 Meera Iyer** (`STU-EXTEND`) | **Demonstrated Mastery** | Consistently accurate on standard and transfer items | **Extension Challenge** | Class VIII Kitchen Lab (Recipe Proportions) |
-| **👩‍🏫 Ms. Ananya** (`TEACHER-PRISM`) | **Classroom Lead** | Reviews classroom evidence pulse across all learners | **Control Room** | Teacher Intervention Compiler |
+| **🟣 Aarav Sharma**<br/>`STU-VISUAL`<br/>`student@prism.demo` | **Misconception** | **Denominator-magnitude confusion**: Believes $1/8 > 1/3$ because whole number $8 > 3$. | **Visual Support Track** | **Interactive SVG Fraction Bar Comparator**: Side-by-side dynamic bars proving that dividing into more pieces makes each piece narrower. |
+| **🟠 Diya Patel**<br/>`STU-FOUNDATION`<br/>`diya@prism.demo` | **Prerequisite Gap** | **Incomplete fraction anatomy**: Cannot distinguish equal fractional parts from unequal slices. | **Foundation Track** | **Equal-Parts Partitioning Workbench**: Hands-on virtual paper-strip folding showing equal-part denominators. |
+| **🔵 Kabir Verma**<br/>`STU-CALC`<br/>`kabir@prism.demo` | **Calculation Slips** | **Arithmetic slip**: Understands equivalence concept but makes unequal arithmetic multiplier slips (e.g., $3/5 \rightarrow 5/10$). | **Guided Practice Track** | **Scaffolded Multiplier Grid**: Guided dual-term multiplication grid enforcing $(a \times k) / (b \times k)$ arithmetic balance. |
+| **🟢 Meera Iyer**<br/>`STU-EXTEND`<br/>`meera@prism.demo` | **Demonstrated Mastery** | **High Transfer Ability**: Consistently solves standard and transfer problems with >85% accuracy. | **Extension Challenge** | **Class VIII Kitchen Lab**: Real-world NCERT applied context (scaling Payasam recipe ingredients using rational proportions). |
+| **👩‍🏫 Ms. Ananya**<br/>`TEACHER-PRISM`<br/>`teacher@prism.demo` | **Classroom Lead** | Reviews classroom evidence pulse across all 4 learners. | **Teacher Control Room** | **Teacher Intervention Compiler**: Editable small-group pod allocations, 45-minute lesson visualizer, and CBSE export. |
 
-> **Hackathon Judges Quick-Switch**: A 1-click **Persona Switcher** is pinned to the top bar, allowing instant switching between Aarav, Diya, Kabir, Meera, and Ms. Ananya without re-authenticating.
-
----
-
-## 03 | Three Pillars of Adaptation (LEARN · SOLVE · TEST)
-
-1. **LEARN (Change Visual Representation & Language)**:
-   - Dynamic SVG fraction bar comparator with real-time length proofs.
-   - Interactive equal-part partitioning strip.
-   - Full bilingual / trilingual terminology in **English**, **Hindi (हिंदी)**, and **Telugu (తెలుగు)**.
-2. **SOLVE (Scaffolded Practice)**:
-   - Guided multiplier grid showing $(a \times k) / (b \times k)$.
-   - Real-world NCERT Class VIII applied contexts (scaling Payasam recipes using equivalent rational proportions).
-3. **TEST (Independent Transfer Verification)**:
-   - Independent novel problem to verify understanding before upgrading mastery estimates.
+> **Hackathon Judges 1-Click Persona Switcher**: A sticky **Persona Switcher** is pinned to the top navigation bar, allowing evaluators to switch instantly between Aarav, Diya, Kabir, Meera, and Ms. Ananya without re-authenticating.
 
 ---
 
-## 04 | Signature Feature: Teacher Intervention Compiler
+## 03 | The Three Pillars of Adaptation (LEARN · SOLVE · TEST)
 
-PRISM never acts as an autonomous teacher. The educator retains full professional authority:
-- **Automatic Grouping Matrix**: Aggregates individual evidence into flexible small-group pods (Visual Pod, Foundation Pod, Guided Pod, Extension Pod).
-- **Interactive Decision Controls**: Teachers can **Approve**, **Modify Activity / Time (5–20 min)**, **Reassign Students**, or **Dismiss / Reject** plans.
-- **45-Minute Lesson Timeline Visualizer**: Dynamic pacing breakdown (Diagnostic Launch $\rightarrow$ Differentiated Pods $\rightarrow$ Independent Transfer $\rightarrow$ Whole-class Synthesis).
-- **Learner Evidence Dossier**: Click any student to inspect their question-by-question attempt trail, selected choices, and triggered diagnostic rules.
-- **Official CBSE Printable Briefing**: One-click printable / exportable PDF format ready for school administration or inspection.
+PRISM structures learning around three evidence-gathering pillars:
+
+```mermaid
+flowchart LR
+  A["1. LEARN<br/>(Change Visual Representation)"] --> B["2. SOLVE<br/>(Scaffolded Multiplier Grid)"]
+  B --> C["3. TEST<br/>(Independent Transfer Check)"]
+  C --> D["4. TEACHER COMPILER<br/>(Differentiated Pods)"]
+```
+
+### 1. LEARN: Dynamic Visual Representation & Language
+- When a student displays conceptual confusion, PRISM does not simply repeat text definitions. It changes the visual representation:
+  - **SVG Fraction Bar Comparator**: Real-time length calculation proving $1/3$ is significantly wider than $1/8$.
+  - **Paper-Strip Partitioning Tool**: Allows students to partition wholes into 2, 3, 4, 6, 8, or 12 equal slices.
+  - **Trilingual Localization**: Instant toggle across **English**, **Hindi (हिंदी)**, and **Telugu (తెలుగు)** with authentic NCERT mathematical terms (*Numerator/Denominator $\rightarrow$ अंश/हर $\rightarrow$ లవం/హారం*).
+
+### 2. SOLVE: Scaffolded Practice
+- For calculation slips, PRISM mounts a step-by-step multiplier scaffold:
+  - Highlights numerator and denominator multipliers simultaneously: $\frac{a \times k}{b \times k}$.
+  - Color-coded validation warns if unequal multipliers are applied.
+
+### 3. TEST: Independent Transfer Verification
+- Mastery is never awarded on repetitive pattern drills alone.
+- Before upgrading a student to "Demonstrated Mastery", PRISM presents an independent **novel transfer question** (e.g. recipe proportion scaling in non-standard units) weighted at **1.4×** in the engine.
 
 ---
 
-## 05 | Indian Classroom Realities
+## 04 | Signature Innovation: Teacher Intervention Compiler
 
-- **Board & Syllabus**: Mapped to **CBSE Class VIII Mathematics (NCERT Middle Stage)**.
-- **Linguistic Inclusivity**: Instant toggle across **English**, **Hindi**, and **Telugu** with authentic mathematical terminology (*Numerator/Denominator $\rightarrow$ अंश/हर $\rightarrow$ లవం/హారం*).
-- **Intermittent Connectivity (Tested Offline Mode)**:
-  - Built-in **Simulated Offline Mode** with local queueing in `localStorage`.
-  - Seamless, idempotent sync with client-side UUIDs (`submission_id`).
-- **Explainable, Deterministic Rules Engine**:
-  - No black-box LLM hallucinations.
-  - Transparent directed acyclic graph (DAG) of prerequisites.
-  - Strict safeguards: A single error cannot establish a misconception; low-confidence triggers teacher review.
-
----
-
-## 06 | Tech Stack & Architecture
+PRISM guarantees that **the teacher retains 100% professional decision authority**. The system never locks students into algorithmic tracks autonomously.
 
 ```mermaid
 flowchart TD
-  subgraph Frontend [Frontend - React + TypeScript + Vite]
-    UI[Student Learning Workspace]
-    TR[Interactive Math Workbench: SVG Fraction Bars & Multiplier Grid]
-    TC[Teacher Control Room & Intervention Compiler]
-    OFF[Offline Queue & Sync Engine]
-    LANG[Multilingual Dictionary: EN / HI / TE]
-  end
-
-  subgraph Backend [Backend - FastAPI + Python 3.11]
-    API[FastAPI REST Endpoints]
-    AUTH[PBKDF2 Auth & JWT Tokens]
-    ENGINE[Deterministic Adaptive Rules Engine]
-    DAG[Concept Prerequisite Graph Validator]
-    DB[(SQLite / PostgreSQL Persistence)]
-  end
-
-  UI --> API
-  TC --> API
-  OFF --> API
-  API --> ENGINE
-  ENGINE --> DAG
-  ENGINE --> DB
+  RAW["Student Observable Evidence (Attempts + Latent Tags)"] --> COMPILER["Teacher Intervention Compiler (compile_groups)"]
+  COMPILER --> POD1["Visual Support Pod (10m)"]
+  COMPILER --> POD2["Foundation Track Pod (12m)"]
+  COMPILER --> POD3["Guided Practice Pod (12m)"]
+  COMPILER --> POD4["Extension Challenge Pod (15m)"]
+  
+  POD1 & POD2 & POD3 & POD4 --> TEACHER{"Teacher Decision Controls"}
+  TEACHER -->|"One-Click"| APPROVE["Approve Group Plan"]
+  TEACHER -->|"Customize"| MODIFY["Modify Duration (5-20m) & Reassign Students"]
+  TEACHER -->|"Professional Discretion"| REJECT["Dismiss / Reject Plan"]
 ```
 
-- **Frontend**: React 18, TypeScript, Vite, Lucide Icons, pure modular CSS.
-- **Backend**: FastAPI, SQLAlchemy, SQLite (`prism.db`), Pydantic.
-- **Logic**: Deterministic rule engine (`engine.py`) with topological DAG validation.
+### Key Control Room Capabilities:
+1. **Automatic Grouping Matrix**: Aggregates individual evidence into flexible small-group pods with suggested activity descriptions, targeted outcomes, and pedagogical durations.
+2. **Interactive Teacher Decisions**:
+   - **Approve**: One-click endorsement of the proposed plan.
+   - **Modify**: Adjust time allocation (5–20 min), edit instructional instructions, or reassign students between pods.
+   - **Reject / Dismiss**: Discard suggestions that do not match the teacher's classroom observation.
+3. **45-Minute Lesson Timeline Visualizer**:
+   - `00–10 min`: Diagnostic Launch & Evidence Gathering
+   - `10–25 min`: Differentiated Intervention Pods
+   - `25–35 min`: Independent Transfer Verification
+   - `35–45 min`: Whole-Class Synthesis & Reflection
+4. **Learner Evidence Dossier**: Click any student in the *Classroom Evidence Pulse* to open a complete, question-by-question historical attempt audit showing prompt, student selection, expected answer, and triggered diagnostic rule.
+5. **Official CBSE Printable Briefing**: One-click printable PDF format ready for school administration, academic supervisors, or inspection.
 
 ---
 
-## 07 | Quick Start (Run Locally)
+## 05 | Indian Classroom Realities & Localization
 
-### Prerequisites
-- Node.js 20+
-- Python 3.11+
+| Challenge in Indian Schools | PRISM Engineering Solution |
+| :--- | :--- |
+| **Diverse Linguistic Backgrounds** | Trilingual engine supporting English, Hindi, and Telugu. Terminology aligns with NCERT Hindi and Telugu medium textbooks (*e.g., अंश/हर, లవం/హారం*). |
+| **Intermittent / Spotty Wi-Fi** | Built-in **Simulated Offline Mode** using `localStorage` queueing. Submissions carry client-side UUIDs (`submission_id`) ensuring idempotent, duplicate-free sync upon reconnection. |
+| **Curriculum Compliance** | Strictly mapped to **CBSE Class VIII Mathematics (NCERT Middle Stage)**, covering rational numbers, standard form, and equivalence. |
+| **AI Safety & Hallucination Risks** | **Deterministic Rules Engine**: Zero generative AI hallucinations. Rubric-based scoring backed by a validated prerequisite DAG. |
 
-### 1. Start the Backend API
-Double-click `run-backend.bat`, or in PowerShell:
+---
+
+## 06 | System Architecture & Visual Artifacts
+
+```mermaid
+flowchart TD
+  subgraph Presentation ["Presentation Layer (React 18 · TypeScript · Vite · Port 5173)"]
+    SW["Student Workspace (4 Archetypes)"]
+    MW["Interactive Math Manipulatives (SVG Bars, Strips, Grids)"]
+    TC["Teacher Control Room & Lesson Timeline"]
+    OQ["Offline Queue Engine & Sync (localStorage)"]
+    TL["Trilingual Dictionary (EN / HI / TE)"]
+  end
+
+  subgraph Gateway ["API & Gateway Layer (FastAPI 0.115 · Uvicorn · Port 8000)"]
+    AUTH["PBKDF2 Password Hashing & JWT Bearer Auth"]
+    EP_STU["Student Attempt & Unit Endpoints"]
+    EP_TEA["Teacher Workspace & Intervention Endpoints"]
+    EP_DEMO["Persona Switcher & Demo State Reset"]
+  end
+
+  subgraph Engine ["Deterministic Engine Layer (engine.py)"]
+    DAG["Topological Prerequisite DAG Validator"]
+    MATCH["Misconception Pattern Matcher"]
+    MASTERY["Weighted Rubric Mastery Calculator"]
+    COMPILER["Teacher Intervention Compiler"]
+    SAFE["Pedagogical Safeguards"]
+  end
+
+  subgraph Persistence ["Persistence Layer (SQLAlchemy ORM · SQLite)"]
+    DB[("prism.db (9 Normalized Tables)")]
+  end
+
+  Presentation --> Gateway
+  Gateway --> Engine
+  Engine --> Persistence
+```
+
+### Visual Architecture Assets
+High-resolution architecture diagrams are generated directly in the repository:
+- **Lossless PNG (1920×1080)**: [`architecture_diagram.png`](file:///c:/Users/kasiv/PRISM_CLASSROOM/architecture_diagram.png)
+- **High-Quality JPEG (1920×1080)**: [`architecture_diagram.jpeg`](file:///c:/Users/kasiv/PRISM_CLASSROOM/architecture_diagram.jpeg)
+- **Interactive HTML Viewer**: [`architecture_diagram.html`](file:///c:/Users/kasiv/PRISM_CLASSROOM/architecture_diagram.html) *(with interactive layer tabs, closed-loop workflow, DAG graph, and schema views)*.
+
+---
+
+## 07 | Deterministic Rules Engine & Mathematical Model
+
+All pedagogical logic lives in [`backend/app/engine.py`](file:///c:/Users/kasiv/PRISM_CLASSROOM/backend/app/engine.py).
+
+### 1. Prerequisite Dependency Graph (DAG)
+The concept graph enforces prerequisite mastery:
+```python
+CONCEPT_GRAPH = {
+    "fraction-parts": [],
+    "fraction-magnitude": ["fraction-parts"],
+    "simplification": ["fraction-parts"],
+    "equivalent-fractions": ["fraction-magnitude", "simplification"],
+}
+```
+On application startup, `validate_graph()` traverses the graph and raises an exception if any dependency cycle or missing parent node is detected.
+
+### 2. Mastery Scoring Formula
+Mastery is a rubric score bounded between $[0.05, 0.95]$:
+
+$$Mastery = \text{round}\left(\max\left(0.05, \min\left(0.95, 0.25 \times M_{prev} + 0.75 \times \frac{\sum w_i \cdot c_i}{\sum w_i}\right)\right), 2\right)$$
+
+- $w_i = 1.0$ for diagnostic and practice items.
+- $w_i = 1.4$ for transfer test items ($40\%$ higher evidentiary weight).
+- $c_i \in \{0, 1\}$ denotes correctness.
+
+### 3. Pedagogical Safeguards
+- **Single-Error Protection**: A single incorrect answer never assigns a misconception label.
+- **Confidence Floor**: A misconception label requires at least $2$ matching observable error tags and $\ge 50\%$ relative occurrence.
+- **Teacher Review Fallback**: Ambiguous or mixed responses route the learner to `follow-up` (Teacher Conference Pod).
+
+---
+
+## 08 | Complete REST API Specification
+
+| Method | Endpoint | Access Role | Description |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/api/health` | Public | Service health probe. Returns `{"status": "ok"}`. |
+| `POST` | `/api/auth/login` | Public | Authenticates credentials; returns JWT token and user profile. |
+| `POST` | `/api/auth/register` | Public | Creates student or teacher account; provisions classroom. |
+| `GET` | `/api/auth/me` | Authenticated | Returns current authenticated session identity. |
+| `GET` | `/api/curriculum` | Public | Declared CBSE Class VIII curriculum and learning goals. |
+| `GET` | `/api/learning/units` | Public | Returns the 8 active CBSE learning units. |
+| `GET` | `/api/learning/my-progress` | Student | Returns the authenticated student's progress across all units. |
+| `GET` | `/api/learning/units/{id}/questions` | Student | Returns questions for a specific unit and stage (`diagnostic`, `practice`, `test`). |
+| `POST` | `/api/learning/attempts` | Student | Submits an attempt; updates mastery and misconception state with client UUID deduplication. |
+| `GET` | `/api/teacher/workspace` | Teacher | Returns live student progress, classroom metrics, and compiled interventions. |
+| `GET` | `/api/teacher/students/{code}/detail` | Teacher | Returns a student's full historical attempt trail and triggered diagnostic rules. |
+| `GET` | `/api/teacher/interventions` | Teacher | Retrieves compiled small-group intervention plans. |
+| `PUT` | `/api/teacher/interventions/{id}` | Teacher | Modifies intervention duration, activity, outcome, student assignment, or status. |
+| `GET` | `/api/demo/personas` | Public | Returns metadata for the 4 student archetypes and lead teacher. |
+| `POST` | `/api/demo/reset` | Public | Resets database to pristine pre-seeded demonstration state. |
+
+---
+
+## 09 | Automated Test Suite
+
+The project includes unit and integration test coverage across both backend and frontend:
+
+### Backend Test Suite (Pytest)
 ```powershell
 cd backend
-# Directly run using venv uvicorn (no script activation required):
-.\.venv\Scripts\uvicorn.exe app.main:app --reload --port 8000
+.\.venv\Scripts\python -m pytest -c pytest.ini tests
 ```
-*(If you prefer activating in PowerShell, first run `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` then `.\.venv\Scripts\Activate.ps1`)*
+**Results: 14 passed in 0.70s**
+- `test_student_attempt_and_idempotency`: Verifies UUID deduplication and attempt grading.
+- `test_teacher_can_view_and_decide_intervention`: Verifies teacher approval, notes, and overrides.
+- `test_project_declares_a_single_cbse_curriculum`: Validates CBSE Class 8 curriculum declaration.
+- `test_authentication_exposes_a_multi_chapter_student_catalogue`: Validates multi-chapter progression.
+- `test_teacher_workspace_contains_rich_learner_profiles`: Tests evidence aggregation across 4 archetypes.
+- `test_student_detail_and_attempt_history`: Validates learner dossier attempt trail.
+- `test_demo_personas_and_reset`: Verifies 1-click persona switching and state reset.
+- `test_graph_validation`: Confirms acyclic DAG validation catches cycles.
+- `test_single_error_does_not_tag_misconception`: Enforces pedagogical safeguard against premature labeling.
+- `test_repeated_misconception_routes_to_visual_support`: Verifies Aarav's visual route prescription.
+- `test_prerequisite_gap_routes_to_foundation`: Verifies Diya's foundation strip route prescription.
+- `test_calculation_slip_routes_to_guided_practice`: Verifies Kabir's guided multiplier route prescription.
+- `test_transfer_success_routes_to_extension`: Verifies Meera's recipe scaling route prescription.
+- `test_mixed_evidence_routes_to_follow_up`: Verifies teacher conference fallback.
 
-### 2. Start the Frontend UI
-Double-click `run-frontend.bat`, or in a separate terminal:
+### Frontend Test Suite (Vitest & TypeScript Build)
 ```powershell
+cd frontend
+npm test
+npm run build
+```
+**Results: 1 test passed in Vitest; TypeScript build clean (0 errors).**
+
+---
+
+## 10 | Local Quick Start Guide
+
+### Prerequisites
+- **Node.js**: v20 or higher
+- **Python**: v3.11 or higher
+- **Git**
+
+### Automated Startup (Windows)
+1. **Start Backend**: Double-click [`run-backend.bat`](file:///c:/Users/kasiv/PRISM_CLASSROOM/run-backend.bat) (starts FastAPI on `http://127.0.0.1:8000`).
+2. **Start Frontend**: Double-click [`run-frontend.bat`](file:///c:/Users/kasiv/PRISM_CLASSROOM/run-frontend.bat) (starts Vite on `http://localhost:5173`).
+3. Open `http://localhost:5173` in your browser.
+
+### Manual Startup (PowerShell)
+```powershell
+# Terminal 1: Backend
+cd backend
+.\.venv\Scripts\uvicorn.exe app.main:app --reload --port 8000
+
+# Terminal 2: Frontend
 cd frontend
 npm.cmd run dev
 ```
 
-Open **`http://localhost:5173`** in your browser.
+### Pre-Configured Demo Credentials
+All accounts share the password: `PrismDemo!2026`
 
-> **Default Demo Logins** (Password for all: `PrismDemo!2026`):
-> - **Student (Aarav - Visual Route)**: `student@prism.demo`
-> - **Student (Diya - Foundation Route)**: `diya@prism.demo`
-> - **Student (Kabir - Guided Route)**: `kabir@prism.demo`
-> - **Student (Meera - Extension Route)**: `meera@prism.demo`
-> - **Teacher (Ms. Ananya - Control Room)**: `teacher@prism.demo`
+| Persona | Role | Email | Password | Pre-seeded Condition |
+| :--- | :--- | :--- | :--- | :--- |
+| **🟣 Aarav Sharma** | Student | `student@prism.demo` | `PrismDemo!2026` | Denominator Misconception (Visual Route) |
+| **🟠 Diya Patel** | Student | `diya@prism.demo` | `PrismDemo!2026` | Prerequisite Part-Whole Gap (Foundation Route) |
+| **🔵 Kabir Verma** | Student | `kabir@prism.demo` | `PrismDemo!2026` | Calculation Slips (Guided Multiplier Route) |
+| **🟢 Meera Iyer** | Student | `meera@prism.demo` | `PrismDemo!2026` | High Mastery (Recipe Scaling Extension Route) |
+| **👩‍🏫 Ms. Ananya** | Teacher | `teacher@prism.demo` | `PrismDemo!2026` | Lead Teacher (Intervention Compiler & Dossier) |
 
----
-
-## 08 | Automated Test Suite
-
-Both backend and frontend contain automated unit and integration tests:
-
-```powershell
-# Backend (14 tests passed)
-cd backend
-.\.venv\Scripts\python -m pytest -c pytest.ini tests
-
-# Frontend (Vitest passed + Typecheck Build passed)
-cd ..\frontend
-npm test
-npm run build
-```
+*(Alternatively, use the 1-click **Persona Switcher** in the top navigation bar to bypass the login form entirely).*
 
 ---
 
-## 09 | Code Kernel '26 Brief Alignment Matrix
+## 11 | 3-Minute Demo Video Recording Script
 
-| Hackathon Requirement | PRISM Implementation | Proved In Prototype |
+> **Target Speed**: ~130–140 words per minute (~410 spoken words across 3 minutes).
+
+| Time | Screen | Action | Voiceover Script |
+| :--- | :--- | :--- | :--- |
+| **0:00–0:35** | Home Screen | Hover over top Persona Switcher | *"In a typical Indian classroom of 50 students, learners progress at vastly different speeds. Traditional EdTech tries to replace educators with black-box AI tutors that isolate students behind screens. Meet **PRISM Classroom**—an adaptive learning copilot built on one core principle: keep the teacher at the centre of every instructional decision. Mapped to CBSE Class 8 Mathematics, PRISM diagnoses learning barriers using short, targeted activities, prescribes tailored visual tools, and empowers educators with our signature Teacher Intervention Compiler."* |
+| **0:35–1:30** | Aarav (`STU-VISUAL`) | Switch to Aarav, adjust fraction bar to $1/3$ and $1/8$, toggle Hindi, click Offline | *"Let’s step into the shoes of Aarav Sharma. Aarav believes $1/8$ is larger than $1/3$ because $8 > 3$. PRISM’s deterministic engine detects this specific misconception. Instead of generic text explanations, it adapts the learning surface with this Interactive Fraction Bar Comparator. As Aarav adjusts partitions, the SVG strips visually prove that more parts make each piece narrower. For Indian classrooms, PRISM supports trilingual mathematical vocabulary in English, Hindi, and Telugu, along with robust offline queueing so learning never stops during Wi-Fi drops."* |
+| **1:30–2:30** | Ms. Ananya (Teacher) | Switch to Teacher, show 45-min timeline, click Modify on Visual Pod, open Aarav's Dossier | *"Now let’s switch to lead teacher, Ms. Ananya. Here in the Teacher Control Room, PRISM compiles individual evidence into the Teacher Intervention Compiler. Notice that PRISM never unilaterally directs the classroom. Ms. Ananya can review proposed small-group pods, adjust time allocations between 5 and 20 minutes, reassign learners, or modify pedagogical activities with one click. Need to justify an intervention? Clicking on any learner opens their transparent Evidence Dossier, displaying every attempt, choice, and triggered diagnostic rule—completely explainable, with zero AI hallucinations."* |
+| **2:30–3:00** | Export Plan Modal | Click `Export Plan`, show CBSE Printable Briefing | *"When the lesson plan is finalized, one click exports an official CBSE Classroom Intervention Briefing, ready for school administration or inspection. Under the hood, PRISM runs on FastAPI, a validated prerequisite DAG, and a responsive React frontend. PRISM Classroom: One concept, many adaptive learning paths, and one teacher-led classroom. Thank you!"* |
+
+---
+
+## 12 | Code Kernel '26 Compliance Matrix
+
+| Requirement | PRISM Implementation | Verification in Prototype |
 | :--- | :--- | :--- |
-| **Adaptive Learning Loop** | Diagnostic $\rightarrow$ Adaptive Learn $\rightarrow$ Guided Solve $\rightarrow$ Transfer Verification | Proved across 4 archetypes |
-| **Misconception Diagnosis** | Rule-based pattern matching (e.g., denominator-magnitude, unequal operations) | Tested in `test_engine.py` |
-| **Teacher Decision Support** | Teacher Intervention Compiler with editable groupings and time allocations | Proved in Teacher Control Room & `test_api.py` |
-| **Indian Classroom Support** | CBSE alignment, English/Hindi/Telugu translations, tested offline queue | PWA-style offline sync toggle |
-| **Explainability & Safety** | Transparent scores (not probabilities), teacher retains override authority | Safeguards enforced in engine |
+| **1. Adaptive Learning Loop** | Diagnostic probe $\rightarrow$ Pattern recognition $\rightarrow$ Scaffolded manipulative $\rightarrow$ Transfer verification. | Proved across Aarav, Diya, Kabir, and Meera. |
+| **2. Misconception Diagnosis** | Rule-based classification for denominator magnitude, sign errors, equal-parts confusion, and unequal multipliers. | Unit tested in `test_engine.py` (7 tests). |
+| **3. Teacher Decision Support** | Teacher Intervention Compiler with editable small-group pods, 45-min lesson timeline, and full override authority. | Verified in Teacher Control Room & `test_api.py`. |
+| **4. Indian Classroom Context** | Aligned with CBSE Class VIII Mathematics (NCERT); instant trilingual toggle (EN/HI/TE); tested offline queueing. | PWA offline toggle and multilingual dictionary. |
+| **5. Explainability & Safety** | Transparent rubric scoring (never unexplainable probabilities); single-error safeguard; teacher review fallback. | Enforced in `engine.py` and validated by test suite. |
+
+---
+
+*PRISM Classroom is developed for Code Kernel '26. Built with FastAPI, React, TypeScript, and SQLite.*

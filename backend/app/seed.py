@@ -30,6 +30,8 @@ def main():
  teacher=db.query(Teacher).filter_by(demo_identity="TEACHER-PRISM").first()
  if not teacher:
   teacher=Teacher(demo_identity="TEACHER-PRISM",name="Ms. Ananya (Demo)",classroom_id=room.id); db.add(teacher); db.flush()
+ else:
+  teacher.classroom_id = room.id
  seen_concepts = set()
  for cid,name,obj,pre in CONCEPTS:
   seen_concepts.add(cid)
@@ -57,6 +59,8 @@ def main():
   s = db.query(Student).filter_by(code=code).first()
   if not s:
    s = Student(code=code, grade=8, language="en", classroom_id=room.id); db.add(s); db.flush()
+  else:
+   s.classroom_id = room.id
   prog = db.query(LearnerProgress).filter_by(student_id=s.id, concept_id="equivalent-fractions").first()
   if not prog:
    db.add(LearnerProgress(student_id=s.id, concept_id="equivalent-fractions", mastery=mastery, evidence_count=count, recent_correct=max(0, count-1), misconception=miscon, misconception_confidence=conf, prerequisite_status=pre, recommendation=route))
