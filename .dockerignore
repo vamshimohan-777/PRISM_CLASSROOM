@@ -1,0 +1,33 @@
+# .dockerignore — keep Docker build context lean
+.git
+.gitignore
+*.md
+!README.md
+
+# Python virtual environment
+backend/.venv
+**/__pycache__
+**/*.pyc
+**/*.pyo
+backend/tests/
+
+# Node / frontend dev artifacts
+frontend/node_modules
+frontend/dist          # rebuilt inside Docker
+*.log
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode
+.idea
+
+# Local SQLite database (re-seeded inside Docker)
+backend/*.db
+backend/app/*.db
+*.db
+
+# Scratch / CI
+.pytest_cache
+htmlcov
+

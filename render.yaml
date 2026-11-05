@@ -1,12 +1,42 @@
-# Render Blueprint for PRISM CLASSROOM
-# Deploys both React Frontend and FastAPI Backend as a single unified service in 1 click
+# ============================================================
+# PRISM CLASSROOM — Render Blueprint
+# One-click deploy: React frontend + FastAPI backend
+# in a single Docker container served on port 8000.
+#
+# Deploy steps:
+#   1. Fork or push this repo to GitHub
+#   2. Go to https://render.com → New → Blueprint
+#   3. Connect your repo — Render reads this file automatically
+#   4. Click "Apply" — done!
+#
+# Service URL after deploy:
+#   https://prism-classroom.onrender.com
+# ============================================================
+
 services:
   - type: web
     name: prism-classroom
-    env: docker
+    runtime: docker
     plan: free
-    dockerfilePath: Dockerfile
+    dockerfilePath: ./Dockerfile
     autoDeploy: true
+
+    # Health check — Render marks the service healthy when this returns 200
+    healthCheckPath: /api/health
+
+    # Environment variables
     envVars:
       - key: PORT
-        value: 8000
+        value: "8000"
+
+      # Optional: add your Gemini API key to enable the LLM fallback
+      # in the Answer Engine. Leave empty to use the deterministic solver.
+      - key: GEMINI_API_KEY
+        value: ""
+
+      # Set the allowed CORS origins for your deployed frontend.
+      # If using the unified container (default), leave this empty —
+      # the React SPA is served from the same origin as the API.
+      # If you deploy the frontend separately, add its URL here.
+      - key: CORS_ORIGINS
+        value: ""

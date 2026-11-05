@@ -4,9 +4,9 @@ from app.database import SessionLocal, engine
 from app.main import (
     submit_attempt, interventions, decide_intervention, curriculum,
     login, learning_units, my_progress, teacher_workspace, teacher_student_detail,
-    demo_personas, reset_demo
+    demo_personas, reset_demo, join_classroom, recompile_interventions
 )
-from app.schemas import AttemptIn, InterventionDecision, LoginIn
+from app.schemas import AttemptIn, InterventionDecision, LoginIn, JoinClassroomIn
 from app.models import User
 from app.seed import main as seed
 
@@ -48,7 +48,11 @@ def test_project_declares_a_single_cbse_curriculum():
     details = curriculum()
     assert details["board_code"] == "CBSE"
     assert details["grade"] == 8
-    assert "Rational Numbers" in details["module_title"]
+    # curriculum now exposes a chapters list instead of a single module_title
+    assert details["total_chapters"] == 8
+    chapter_titles = [ch["title"] for ch in details["chapters"]]
+    assert "Rational Numbers" in chapter_titles
+    assert "Linear Equations in One Variable" in chapter_titles
 
 def test_authentication_exposes_a_multi_chapter_student_catalogue():
     db = SessionLocal()
@@ -90,4 +94,19 @@ def test_demo_personas_and_reset():
     
     reset_res = reset_demo(db)
     assert reset_res["status"] == "ok"
+    db.close()
+
+def test_join_classroom_and_real_data_enrollment():
+    db = SessionLocal()
+    user = db.query(User).filter_by(email="student@prism.demo").first()
+    res = join_classroom(JoinClassroomIn(classroom_code="8A-CBSE"), user=user, db=db)
+    assert res["status"] == "joined"
+    assert res["classroom_code"] == "8A-CBSE"
+    db.close()
+
+def test_recompile_interventions_from_live_evidence():
+    db = SessionLocal()
+    updated = recompile_interventions(x_demo_teacher="TEACHER-PRISM", db=db)
+    assert len(updated) > 0
+    assert any(u["barrier"] for u in updated)
     db.close()

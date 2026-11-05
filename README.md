@@ -8,7 +8,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
 [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat-square&logo=vite)](https://vitejs.dev)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-14%2F14%20Pytest%20%2B%20Vitest%20Passed-brightgreen?style=flat-square)](#09--automated-test-suite)
+[![Tests](https://img.shields.io/badge/Tests-18%2F18%20Pytest%20%2B%20Vitest%20Passed-brightgreen?style=flat-square)](#09--automated-test-suite)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
 ---
@@ -171,11 +171,20 @@ flowchart TD
   Engine --> Persistence
 ```
 
-### Visual Architecture Assets
-High-resolution architecture diagrams are generated directly in the repository:
-- **Lossless PNG (1920×1080)**: [`architecture_diagram.png`](file:///c:/Users/kasiv/PRISM_CLASSROOM/architecture_diagram.png)
-- **High-Quality JPEG (1920×1080)**: [`architecture_diagram.jpeg`](file:///c:/Users/kasiv/PRISM_CLASSROOM/architecture_diagram.jpeg)
-- **Interactive HTML Viewer**: [`architecture_diagram.html`](file:///c:/Users/kasiv/PRISM_CLASSROOM/architecture_diagram.html) *(with interactive layer tabs, closed-loop workflow, DAG graph, and schema views)*.
+### Visual Architecture & Submission Flowchart
+High-resolution architecture and project flowcharts are generated directly in the repository:
+- **Interactive Project Flowchart (SVG / HTML5)**: [`project_flowchart.html`](file:///c:/Users/kasiv/PRISM_CLASSROOM/project_flowchart.html) *(with layer toggles, closed-loop workflow, prerequisite DAG graph, and schema views)*.
+- **Interactive Architecture Viewer**: [`architecture_diagram.html`](file:///c:/Users/kasiv/PRISM_CLASSROOM/architecture_diagram.html).
+- **Online Flowchart View (Live Web)**: Accessible at `/flowchart.html` or through the in-app **Project Flowchart** navigation tab.
+- **10-Minute Google Meet Technical Defense Guide**: [`INTERVIEW_DEFENSE.md`](file:///c:/Users/kasiv/PRISM_CLASSROOM/INTERVIEW_DEFENSE.md) *(Master technical script with trade-off analyses, data flow walkthroughs, and judge Q&A drills)*.
+
+---
+
+### AEO, GEO & Search Engine Optimization
+PRISM is fully optimized for Answer Engines and Generative Search Engines:
+- **AEO (Answer Engine Optimization)**: Schema.org JSON-LD structured data for `EducationalOrganization`, `Course`, `WebApplication`, and `FAQPage` embedded in [`index.html`](file:///c:/Users/kasiv/PRISM_CLASSROOM/frontend/index.html).
+- **GEO (Generative Engine Optimization)**: Full implementation of the AI crawler specification at [`llms.txt`](file:///c:/Users/kasiv/PRISM_CLASSROOM/frontend/public/llms.txt) and [`llms-full.txt`](file:///c:/Users/kasiv/PRISM_CLASSROOM/frontend/public/llms-full.txt) for GPTBot, PerplexityBot, and ClaudeBot.
+- **SEO (Search Engine Optimization)**: Semantic HTML5, canonical URLs, Open Graph tags, Twitter cards, XML sitemap ([`sitemap.xml`](file:///c:/Users/kasiv/PRISM_CLASSROOM/frontend/public/sitemap.xml)), and crawler policy ([`robots.txt`](file:///c:/Users/kasiv/PRISM_CLASSROOM/frontend/public/robots.txt)).
 
 ---
 
@@ -224,9 +233,11 @@ $$Mastery = \text{round}\left(\max\left(0.05, \min\left(0.95, 0.25 \times M_{pre
 | `GET` | `/api/learning/my-progress` | Student | Returns the authenticated student's progress across all units. |
 | `GET` | `/api/learning/units/{id}/questions` | Student | Returns questions for a specific unit and stage (`diagnostic`, `practice`, `test`). |
 | `POST` | `/api/learning/attempts` | Student | Submits an attempt; updates mastery and misconception state with client UUID deduplication. |
+| `POST` | `/api/students/join-classroom` | Student | Enrolls a real student into a teacher's classroom by code. |
 | `GET` | `/api/teacher/workspace` | Teacher | Returns live student progress, classroom metrics, and compiled interventions. |
 | `GET` | `/api/teacher/students/{code}/detail` | Teacher | Returns a student's full historical attempt trail and triggered diagnostic rules. |
 | `GET` | `/api/teacher/interventions` | Teacher | Retrieves compiled small-group intervention plans. |
+| `POST` | `/api/teacher/interventions/recompile` | Teacher | Recompiles intervention pods dynamically from live student attempt evidence. |
 | `PUT` | `/api/teacher/interventions/{id}` | Teacher | Modifies intervention duration, activity, outcome, student assignment, or status. |
 | `GET` | `/api/demo/personas` | Public | Returns metadata for the 4 student archetypes and lead teacher. |
 | `POST` | `/api/demo/reset` | Public | Resets database to pristine pre-seeded demonstration state. |
@@ -242,7 +253,7 @@ The project includes unit and integration test coverage across both backend and 
 cd backend
 .\.venv\Scripts\python -m pytest -c pytest.ini tests
 ```
-**Results: 14 passed in 0.70s**
+**Results: 18 passed in < 1s**
 - `test_student_attempt_and_idempotency`: Verifies UUID deduplication and attempt grading.
 - `test_teacher_can_view_and_decide_intervention`: Verifies teacher approval, notes, and overrides.
 - `test_project_declares_a_single_cbse_curriculum`: Validates CBSE Class 8 curriculum declaration.
@@ -250,6 +261,8 @@ cd backend
 - `test_teacher_workspace_contains_rich_learner_profiles`: Tests evidence aggregation across 4 archetypes.
 - `test_student_detail_and_attempt_history`: Validates learner dossier attempt trail.
 - `test_demo_personas_and_reset`: Verifies 1-click persona switching and state reset.
+- `test_join_classroom_and_real_data_enrollment`: Verifies real student enrollment by class code.
+- `test_recompile_interventions_from_live_evidence`: Verifies dynamic real-time pod re-clustering on live attempts.
 - `test_graph_validation`: Confirms acyclic DAG validation catches cycles.
 - `test_single_error_does_not_tag_misconception`: Enforces pedagogical safeguard against premature labeling.
 - `test_repeated_misconception_routes_to_visual_support`: Verifies Aarav's visual route prescription.
@@ -257,6 +270,8 @@ cd backend
 - `test_calculation_slip_routes_to_guided_practice`: Verifies Kabir's guided multiplier route prescription.
 - `test_transfer_success_routes_to_extension`: Verifies Meera's recipe scaling route prescription.
 - `test_mixed_evidence_routes_to_follow_up`: Verifies teacher conference fallback.
+- `test_compiler_groups_using_rules_not_student_names`: Verifies `compile_groups` uses rules, not hardcoded student names.
+- `test_compiler_groups_skips_pre_diagnostic_profiles`: Verifies robustness — pre-diagnostic profiles are safely excluded from grouping.
 
 ### Frontend Test Suite (Vitest & TypeScript Build)
 ```powershell
@@ -319,15 +334,18 @@ All accounts share the password: `PrismDemo!2026`
 
 ---
 
-## 12 | Code Kernel '26 Compliance Matrix
+## 12 | Code Kernel '26 Next Round Challenge Compliance Matrix
 
-| Requirement | PRISM Implementation | Verification in Prototype |
+| Next Round Challenge Criteria | PRISM Implementation & Technical Deliverable | Prototype & Code Verification |
 | :--- | :--- | :--- |
-| **1. Adaptive Learning Loop** | Diagnostic probe $\rightarrow$ Pattern recognition $\rightarrow$ Scaffolded manipulative $\rightarrow$ Transfer verification. | Proved across Aarav, Diya, Kabir, and Meera. |
-| **2. Misconception Diagnosis** | Rule-based classification for denominator magnitude, sign errors, equal-parts confusion, and unequal multipliers. | Unit tested in `test_engine.py` (7 tests). |
-| **3. Teacher Decision Support** | Teacher Intervention Compiler with editable small-group pods, 45-min lesson timeline, and full override authority. | Verified in Teacher Control Room & `test_api.py`. |
-| **4. Indian Classroom Context** | Aligned with CBSE Class VIII Mathematics (NCERT); instant trilingual toggle (EN/HI/TE); tested offline queueing. | PWA offline toggle and multilingual dictionary. |
-| **5. Explainability & Safety** | Transparent rubric scoring (never unexplainable probabilities); single-error safeguard; teacher review fallback. | Enforced in `engine.py` and validated by test suite. |
+| **1. Website Development & Required Pages** | Full multi-page experience: **Landing Page**, **Curriculum & DAG Explorer**, **Project Flowchart Viewer**, **AEO/GEO Knowledge Hub (FAQ)**, and **Interactive Student/Teacher Workspaces**. | Live navigation in `frontend/src/Pages.tsx` and `App.tsx`. |
+| **2. AEO (Answer Engine Optimization)** | Schema.org JSON-LD structured data for `FAQPage`, `Course`, `EducationalOrganization`, and `WebApplication`. Optimized for Google AI Overviews and voice search queries. | Verified in `frontend/index.html` via Schema validator. |
+| **3. GEO (Generative Engine Optimization)** | Official `llms.txt` and `llms-full.txt` standard files for AI crawlers (PerplexityBot, GPTBot, ClaudeBot) providing high information-density markdown knowledge graphs. | Verified at `/llms.txt` and `/llms-full.txt`. |
+| **4. SEO (Search Engine Optimization)** | Semantic HTML5 tags, canonical tags, Open Graph previews, Twitter card meta, XML sitemap, and crawler robot directives. | Verified at `/robots.txt` and `/sitemap.xml`. |
+| **5. Product Improvement & UX** | Trilingual instant toggle (EN/HI/TE), interactive SVG fraction bar comparators, 45-minute lesson pacing scheduler, learner attempt dossiers, and printable CBSE briefings. | Verified across student and teacher interfaces. |
+| **6. Real Data Implementation** | Real database persistence (SQLite `prism.db`): real user registration, teacher classroom creation (`CLASS-XXXX`), student enrollment by code (`POST /api/students/join-classroom`), and dynamic real-time pod re-clustering (`POST /api/teacher/interventions/recompile`). No dummy simulations. | Verified in `test_api.py` and live workspace. |
+| **7. Project Flowchart (50% Submission)** | High-resolution interactive visual SVG flowchart covering client ingestion, offline queueing, API gateway, deterministic DAG engine, and teacher decision loops. | Standalone [`project_flowchart.html`](file:///c:/Users/kasiv/PRISM_CLASSROOM/project_flowchart.html) and live in-app tab. |
+| **8. Technical Interview Prep (50% Interview)** | Comprehensive 10-minute Google Meet master interview defense guide covering architecture rationale, data collection/storage, challenges & solutions, and competitive superiority. | Fully documented in [`INTERVIEW_DEFENSE.md`](file:///c:/Users/kasiv/PRISM_CLASSROOM/INTERVIEW_DEFENSE.md). |
 
 ---
 

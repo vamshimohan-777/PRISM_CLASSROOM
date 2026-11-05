@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Plan, StudentDetail, LearnerSummary } from './api';
 import { Language, TRANSLATIONS } from './translations';
-import { CheckCircle2, Clock3, AlertCircle, FileText, Printer, X, Sparkles, UserCheck, Shield } from 'lucide-react';
+import { CheckCircle2, Clock3, AlertCircle, FileText, Printer, X, Sparkles, UserCheck, Shield, Copy, Check, UserPlus } from 'lucide-react';
 
 interface EditPlanModalProps {
   plan: Plan;
@@ -280,10 +280,12 @@ interface PrintPlanModalProps {
   plans: Plan[];
   classCode: string;
   teacherName: string;
+  learners?: LearnerSummary[];
   onClose: () => void;
 }
 
-export function PrintPlanModal({ plans, classCode, teacherName, onClose }: PrintPlanModalProps) {
+export function PrintPlanModal({ plans, classCode, teacherName, learners = [], onClose }: PrintPlanModalProps) {
+  const learnerName = (code: string) => learners.find(l => l.code === code)?.name || code;
   return (
     <div className="modal-backdrop">
       <div className="modal-container print-modal">
@@ -334,7 +336,7 @@ export function PrintPlanModal({ plans, classCode, teacherName, onClose }: Print
                     <small style={{ color: '#666' }}>Confidence: {plan.confidence}</small>
                   </td>
                   <td>
-                    <b>{plan.student_codes.join(', ')}</b>
+                    <b>{plan.student_codes.map(learnerName).join(', ')}</b>
                   </td>
                   <td>
                     {plan.activity}
@@ -407,6 +409,139 @@ export function LessonTimelineSchedule() {
           <b>4. Whole-Class Synthesis & Next Lesson Pacing</b>
           <small>Teacher reviews updated evidence pulse and confirms readiness to progress.</small>
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function InviteStudentsModal({ classCode, onClose }: { classCode: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  const copyCode = () => {
+    navigator.clipboard.writeText(classCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-container invite-modal" style={{ maxWidth: '480px' }}>
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow">REAL DATA ENROLLMENT</span>
+            <h3>Enroll Real Students</h3>
+          </div>
+          <button className="icon-close" onClick={onClose}><X size={20} /></button>
+        </div>
+
+        <div style={{ padding: '20px 24px' }}>
+          <p style={{ color: '#4b5563', fontSize: '14px', marginBottom: '16px' }}>
+            Share this official Classroom Join Code with your students. Real student submissions will automatically feed into your Teacher Intervention Compiler.
+          </p>
+
+          <div style={{ background: '#f5f3ff', border: '2px dashed #7c3aed', borderRadius: '12px', padding: '18px', textAlign: 'center', marginBottom: '20px' }}>
+            <span style={{ fontSize: '11px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>Your Classroom Code</span>
+            <div style={{ fontSize: '32px', fontWeight: 900, color: '#5b21b6', letterSpacing: '2px', margin: '6px 0' }}>{classCode}</div>
+            <button
+              type="button"
+              className="btn-primary"
+              style={{ marginTop: '8px', padding: '8px 16px', fontSize: '13px' }}
+              onClick={copyCode}
+            >
+              {copied ? <><Check size={16} /> Code Copied!</> : <><Copy size={16} /> Copy Join Code</>}
+            </button>
+          </div>
+
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
+            <h5 style={{ fontSize: '13px', color: '#1e293b', marginBottom: '8px' }}>How real students join:</h5>
+            <ol style={{ fontSize: '12px', color: '#64748b', paddingLeft: '18px', lineHeight: '1.7' }}>
+              <li>Student registers with their email at <b>prism-classroom.onrender.com</b>.</li>
+              <li>Enters code <b>{classCode}</b> during registration or clicks "Join Classroom".</li>
+              <li>Completes diagnostic or practice tasks; their real data streams into your Control Room live!</li>
+            </ol>
+          </div>
+        </div>
+
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function JoinClassroomModal({
+  lang = 'en',
+  onJoin,
+  onClose,
+}: {
+  lang?: Language;
+  onJoin: (code: string) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const t = TRANSLATIONS[lang];
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!code.trim()) return;
+    setBusy(true);
+    setError('');
+    try {
+      await onJoin(code.trim().toUpperCase());
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to join classroom. Check code.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="modal-backdrop">
+      <div className="modal-container" style={{ maxWidth: '440px' }}>
+        <div className="modal-header">
+          <div>
+            <span className="eyebrow">{lang === 'hi' ? 'कक्षा नामांकन' : lang === 'te' ? 'తరగతి నమోదు' : 'ENROLL IN CLASSROOM'}</span>
+            <h3>{lang === 'hi' ? 'शिक्षक की कक्षा से जुड़ें' : lang === 'te' ? 'ఉపాధ్యాయుని తరగతిలో చేరండి' : "Join Teacher's Classroom"}</h3>
+          </div>
+          <button className="icon-close" onClick={onClose}><X size={20} /></button>
+        </div>
+
+        <form onSubmit={submit} style={{ padding: '20px 24px' }}>
+          <p style={{ color: '#4b5563', fontSize: '13px', marginBottom: '16px' }}>
+            {lang === 'hi'
+              ? 'अपने शिक्षक द्वारा प्रदान किया गया कक्षा कोड दर्ज करें (उदा. 8A-CBSE) ताकि आपके परिणाम उनके नियंत्रण कक्ष से जुड़ सकें।'
+              : lang === 'te'
+              ? 'మీ ఫలితాలను ఉపాధ్యాయుని కంట్రోల్ రూమ్‌కు అనుసంధానించడానికి మీ ఉపాధ్యాయుడు అందించిన తరగతి గది కోడ్‌ను నమోదు చేయండి (ఉదా: 8A-CBSE).'
+              : 'Enter the unique Classroom Code provided by your teacher (e.g. 8A-CBSE) to link your responses to their dashboard.'}
+          </p>
+
+          <label style={{ display: 'block', marginBottom: '16px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#374151' }}>
+              {lang === 'hi' ? 'कक्षा कोड (Classroom Code)' : lang === 'te' ? 'తరగతి గది కోడ్ (Classroom Code)' : 'Classroom Code'}
+            </span>
+            <input
+              required
+              type="text"
+              placeholder="e.g. 8A-CBSE"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              style={{ width: '100%', padding: '10px 14px', fontSize: '16px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', borderRadius: '8px', border: '1px solid #cbd5e1', marginTop: '4px' }}
+            />
+          </label>
+
+          {error && <div className="errorbox" style={{ marginBottom: '14px' }}>{error}</div>}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button type="button" className="btn-secondary" onClick={onClose}>{t.cancel}</button>
+            <button type="submit" className="btn-primary" disabled={busy || !code.trim()}>
+              {busy ? '…' : lang === 'hi' ? 'कक्षा से जुड़ें' : lang === 'te' ? 'తరగతిలో చేరండి' : 'Join Classroom'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

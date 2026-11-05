@@ -1,4 +1,7 @@
-"""Deterministic learning rules. Values are rubric scores, never probabilities."""
+"""Deterministic learning rules. Values are rubric scores, never probabilities.
+
+All routing decisions are rule-based and fully reproducible. No generative AI is used.
+"""
 from dataclasses import dataclass
 
 CONCEPT_GRAPH = {
@@ -49,16 +52,16 @@ def update_profile(previous, attempts, prerequisite_mastery=0.75):
     confidence = round(leading_count / count, 2) if leading_count >= 2 else 0.0
     prerequisite = "secure" if prerequisite_mastery >= .65 else "needs-check"
     if prerequisite == "needs-check" and correct <= 1:
-        return RuleResult(mastery, count, leading if confidence else None, confidence, prerequisite, "foundation", "Foundational fraction-part evidence should be checked before equivalence practice.")
+        return RuleResult(mastery, count, leading if confidence else None, confidence, prerequisite, "foundation", "Prerequisite fraction-part knowledge appears incomplete; foundation scaffolding is prescribed before equivalence practice.")
     if leading and confidence >= .5:
-        return RuleResult(mastery, count, leading, confidence, prerequisite, "visual-support", f"{leading_count} responses match a possible pattern; use a visual check before concluding.")
+        return RuleResult(mastery, count, leading, confidence, prerequisite, "visual-support", f"Rule: {leading_count}/{count} incorrect responses carry the '{leading}' error tag (≥50% threshold). Visual representation change is prescribed.")
     if count >= 2 and correct != count and leading_count < 2:
-        return RuleResult(mastery, count, None, 0, prerequisite, "follow-up", "Evidence is mixed; ask a discriminating follow-up or review with the teacher.")
+        return RuleResult(mastery, count, None, 0, prerequisite, "follow-up", "Evidence is mixed and no single error pattern dominates. Teacher should ask one discriminating follow-up question before choosing a route.")
     if transfer and transfer[-1]["correct"] and mastery >= .72:
-        return RuleResult(mastery, count, None, 0, "secure", "extension", "Independent transfer evidence supports an extension task.")
+        return RuleResult(mastery, count, None, 0, "secure", "extension", "Most-recent transfer item answered correctly and rubric mastery ≥ 72%. Independent extension challenge is prescribed.")
     if mastery >= .68 and count >= 3:
-        return RuleResult(mastery, count, None, 0, prerequisite, "test", "Practice evidence supports independent transfer verification.")
-    return RuleResult(mastery, count, None, 0, prerequisite, "guided-practice", "More guided equivalence practice will provide useful evidence.")
+        return RuleResult(mastery, count, None, 0, prerequisite, "test", "Mastery ≥ 68% across ≥3 items. Progressing to independent transfer verification stage.")
+    return RuleResult(mastery, count, None, 0, prerequisite, "guided-practice", "Insufficient pattern evidence for labelling; scaffolded guided practice will yield clearer diagnostic signal.")
 
 INTERVENTION_LIBRARY = {
     "foundation": ("Check fraction parts", "Use paper strips to name numerator and denominator, then simplify two shaded bars.", "12 min", "Student identifies equal-sized parts before comparing fractions.", "Two prerequisite check questions"),
@@ -72,12 +75,15 @@ def compile_groups(profiles):
     groups = {}
     for p in profiles:
         key = p.recommendation
+        # Skip profiles that haven't gathered enough evidence for grouping yet
+        if key not in INTERVENTION_LIBRARY:
+            continue
         groups.setdefault(key, []).append(p)
     plans = []
     for key, members in groups.items():
         title, activity, duration, outcome, follow_up = INTERVENTION_LIBRARY[key]
         labels = [m.code for m in members]
         confidence = "review" if key == "follow-up" else ("high" if len(members) >= 2 else "moderate")
-        plans.append({"group_key": key, "students": labels, "barrier": title, "evidence": f"{len(members)} synthetic learner profile(s) currently route to {key.replace('-', ' ')}.", "confidence": confidence, "activity": activity, "duration": duration, "outcome": outcome, "follow_up": follow_up})
+        plans.append({"group_key": key, "students": labels, "barrier": title, "evidence": f"{len(members)} learner profile(s) currently route to {key.replace('-', ' ')}.", "confidence": confidence, "activity": activity, "duration": duration, "outcome": outcome, "follow_up": follow_up})
     return plans
 

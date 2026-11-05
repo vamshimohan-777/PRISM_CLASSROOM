@@ -98,6 +98,127 @@ export type InterventionUpdate = {
   student_codes?: string[];
 };
 
+// ----------------------------------------------------
+// Search Engine Types
+// ----------------------------------------------------
+export type SearchResultItem = {
+  id: string;
+  type: 'chapter' | 'concept' | 'question' | 'misconception' | 'intervention';
+  title: string;
+  snippet: string;
+  relevance_score: number;
+  chapter_id?: string | null;
+  concept_id?: string | null;
+  tags: string[];
+  metadata: Record<string, any>;
+};
+
+export type SearchResponse = {
+  query: string;
+  total_results: number;
+  results: SearchResultItem[];
+};
+
+// ----------------------------------------------------
+// Answer Engine Types
+// ----------------------------------------------------
+export type SolutionStep = {
+  step_number: number;
+  title: string;
+  explanation: string;
+  math_expr: string;
+};
+
+export type PracticeChallenge = {
+  question: string;
+  options: string[];
+  correct_answer: string;
+  explanation: string;
+};
+
+export type AnswerResponse = {
+  query: string;
+  category: string;
+  direct_answer: string;
+  confidence: number;
+  steps: SolutionStep[];
+  verification: string;
+  misconception_warning: string;
+  prerequisites: string[];
+  practice_challenge: PracticeChallenge;
+  source: string;
+};
+
+// ----------------------------------------------------
+// Generative Engine Types
+// ----------------------------------------------------
+export type GeneratedQuestion = {
+  id: string;
+  concept_id: string;
+  stage: 'diagnostic' | 'practice' | 'test';
+  difficulty: 'foundation' | 'standard' | 'challenge';
+  prompt: string;
+  options: string[];
+  expected_answer: string;
+  explanation: string;
+  misconception_map: Record<string, string>;
+  is_transfer: boolean;
+};
+
+export type RemediationGuide = {
+  student_name: string;
+  grade: number;
+  misconception_id: string;
+  title: string;
+  cognitive_barrier: string;
+  concrete_analogy: string;
+  visual_manipulative: string;
+  counter_example: string;
+  guided_steps: string[];
+  diagnostic_probe: {
+    question: string;
+    options: string[];
+    correct_answer: string;
+    explanation: string;
+  };
+  generated_at?: string;
+};
+
+export type LessonPlanTimelinePhase = {
+  phase: string;
+  duration: string;
+  pedagogy: string;
+  teacher_prompt?: string;
+  student_action?: string;
+  pods?: Array<{
+    pod_name: string;
+    target_barrier: string;
+    activity: string;
+    teacher_checkpoint: string;
+    materials: string;
+  }>;
+};
+
+export type GeneratedLessonPlan = {
+  title: string;
+  classroom_code: string;
+  duration_minutes: number;
+  curriculum_framework: string;
+  learning_objectives: string[];
+  timeline: LessonPlanTimelinePhase[];
+  inspection_rubric: Record<string, string>;
+};
+
+export type GeneratedTransferTask = {
+  title: string;
+  context: string;
+  ingredients?: string[];
+  problem: string;
+  solution_steps: string[];
+  pedagogy?: string;
+  pedagogical_outcome?: string;
+};
+
 async function request<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('content-type', 'application/json');
@@ -126,4 +247,22 @@ export const api = {
   studentDetail: (code: string, token: string) => request<StudentDetail>(`/teacher/students/${code}/detail`, {}, token),
   updateIntervention: (id: number, body: InterventionUpdate, token: string) =>
     request<Plan>(`/teacher/interventions/${id}`, { method: 'PUT', body: JSON.stringify(body) }, token),
+  joinClassroom: (classroom_code: string, token: string) =>
+    request<{ status: string; classroom_code: string; curriculum: string; teacher_name: string }>('/students/join-classroom', { method: 'POST', body: JSON.stringify({ classroom_code }) }, token),
+  recompileInterventions: (token: string) =>
+    request<Plan[]>('/teacher/interventions/recompile', { method: 'POST' }, token),
+  search: (query: string, entity_type: string = 'all', chapter_id: string = 'all', limit: number = 15) =>
+    request<SearchResponse>('/search', { method: 'POST', body: JSON.stringify({ query, entity_type, chapter_id, limit }) }),
+  searchSuggestions: (prefix: string = '') =>
+    request<{ suggestions: string[] }>(`/search/suggestions?q=${encodeURIComponent(prefix)}`),
+  answer: (query: string, concept_id?: string) =>
+    request<AnswerResponse>('/answer', { method: 'POST', body: JSON.stringify({ query, concept_id }) }),
+  generateQuestion: (concept_id: string = 'equivalent-fractions', stage: 'diagnostic' | 'practice' | 'test' = 'practice', difficulty: 'foundation' | 'standard' | 'challenge' = 'standard') =>
+    request<GeneratedQuestion>('/generate/question', { method: 'POST', body: JSON.stringify({ concept_id, stage, difficulty }) }),
+  generateRemediation: (misconception_id: string, student_name: string = 'Learner', grade: number = 8) =>
+    request<RemediationGuide>('/generate/remediation', { method: 'POST', body: JSON.stringify({ misconception_id, student_name, grade }) }),
+  generateLessonPlan: (concept_id: string = 'equivalent-fractions', classroom_code: string = '8A-CBSE') =>
+    request<GeneratedLessonPlan>('/generate/lesson-plan', { method: 'POST', body: JSON.stringify({ concept_id, classroom_code }) }),
+  generateTransferTask: (concept_id: string = 'equivalent-fractions', theme: string = 'recipes') =>
+    request<GeneratedTransferTask>('/generate/transfer-task', { method: 'POST', body: JSON.stringify({ concept_id, theme }) }),
 };

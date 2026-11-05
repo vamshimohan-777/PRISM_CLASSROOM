@@ -1,24 +1,17 @@
 import { FormEvent, useEffect, useState } from 'react';
 import {
   ArrowRight,
-  BookOpen,
   CheckCircle2,
   Clock3,
   GraduationCap,
-  LayoutDashboard,
   LockKeyhole,
   LogOut,
-  RotateCcw,
   Sparkles,
   Users,
   Wifi,
   WifiOff,
-  Globe2,
   FileText,
-  UserCheck,
-  ChevronRight,
-  Shield,
-  Layers,
+  UserPlus,
 } from 'lucide-react';
 import {
   api,
@@ -29,9 +22,7 @@ import {
   type Unit,
   type User,
   type WorkspaceData,
-  type Persona,
   type StudentDetail,
-  type LearnerSummary,
 } from './api';
 import { Language, TRANSLATIONS } from './translations';
 import {
@@ -45,8 +36,20 @@ import {
   StudentDossierModal,
   PrintPlanModal,
   LessonTimelineSchedule,
+  InviteStudentsModal,
+  JoinClassroomModal,
 } from './TeacherModals';
-import { HackathonTourModal } from './HackathonTourModal';
+import { LandingPage, CurriculumPage, FlowchartPage, AeoGeoFaqPage } from './Pages';
+import { EnginesHub } from './EnginesHub';
+import {
+  getLocalizedChapterTitle,
+  getLocalizedChapterSummary,
+  getLocalizedQuestionPrompt,
+  getLocalizedOptionLabel,
+  getLocalizedExplanation,
+} from './localization';
+
+export type ActiveTab = 'app' | 'home' | 'curriculum' | 'faq' | 'engines';
 
 type Session = Auth;
 const sessionKey = 'prism-session';
@@ -72,31 +75,29 @@ function Brand() {
 }
 
 // ----------------------------------------------------
-// Topbar with Judge Showcase Bar
+// Topbar (Authenticated Navigation)
 // ----------------------------------------------------
 function Topbar({
   user,
   lang,
   onLangChange,
+  activeTab,
+  onTabChange,
   isOffline,
   onToggleOffline,
   queuedCount,
   onSyncQueue,
-  onResetDemo,
-  onOpenTour,
-  onSelectPersona,
   onSignOut,
 }: {
   user: User;
   lang: Language;
   onLangChange: (lang: Language) => void;
+  activeTab: ActiveTab;
+  onTabChange: (tab: ActiveTab) => void;
   isOffline: boolean;
   onToggleOffline: () => void;
   queuedCount: number;
   onSyncQueue: () => void;
-  onResetDemo: () => void;
-  onOpenTour: () => void;
-  onSelectPersona: (email: string) => void;
   onSignOut: () => void;
 }) {
   const t = TRANSLATIONS[lang];
@@ -104,54 +105,50 @@ function Topbar({
   return (
     <header className="topbar">
       <div className="topbar-content">
-        <Brand />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ cursor: 'pointer' }} onClick={() => onTabChange('home')}>
+            <Brand />
+          </div>
+          <nav className="site-nav-tabs">
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'home' ? 'active' : ''}`}
+              onClick={() => onTabChange('home')}
+            >
+              {t.navHome}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'curriculum' ? 'active' : ''}`}
+              onClick={() => onTabChange('curriculum')}
+            >
+              {t.navCurriculum}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'faq' ? 'active' : ''}`}
+              onClick={() => onTabChange('faq')}
+            >
+              {t.navFaq}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'engines' ? 'active' : ''}`}
+              onClick={() => onTabChange('engines')}
+            >
+              {t.navEngines}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'app' ? 'active' : ''}`}
+              onClick={() => onTabChange('app')}
+            >
+              {user.role === 'teacher' ? t.navControlRoom : t.navMyLearning}
+            </button>
+          </nav>
+        </div>
 
         <div className="showcase-actions">
-          {/* Quick Persona Switcher for Hackathon Judges */}
-          <div className="persona-switcher" title="Quick Persona Switcher for Hackathon Judges">
-            <span className="persona-label">Persona:</span>
-            <button
-              type="button"
-              className={`persona-btn ${user.student_code === 'STU-VISUAL' ? 'active' : ''}`}
-              onClick={() => onSelectPersona('student@prism.demo')}
-              title="Aarav: Denominator Misconception (Visual Route)"
-            >
-              🟣 Aarav (Visual)
-            </button>
-            <button
-              type="button"
-              className={`persona-btn ${user.student_code === 'STU-FOUNDATION' ? 'active' : ''}`}
-              onClick={() => onSelectPersona('diya@prism.demo')}
-              title="Diya: Prerequisite Gap (Foundation Route)"
-            >
-              🟠 Diya (Foundation)
-            </button>
-            <button
-              type="button"
-              className={`persona-btn ${user.student_code === 'STU-CALC' ? 'active' : ''}`}
-              onClick={() => onSelectPersona('kabir@prism.demo')}
-              title="Kabir: Calculation Slips (Guided Route)"
-            >
-              🔵 Kabir (Guided)
-            </button>
-            <button
-              type="button"
-              className={`persona-btn ${user.student_code === 'STU-EXTEND' ? 'active' : ''}`}
-              onClick={() => onSelectPersona('meera@prism.demo')}
-              title="Meera: High Mastery (Recipe Lab Route)"
-            >
-              🟢 Meera (Extension)
-            </button>
-            <button
-              type="button"
-              className={`persona-btn ${user.role === 'teacher' ? 'active' : ''}`}
-              onClick={() => onSelectPersona('teacher@prism.demo')}
-              title="Ms. Ananya: Teacher Control Room & Intervention Compiler"
-            >
-              👩‍🏫 Ms. Ananya (Teacher)
-            </button>
-          </div>
-
           {/* Multilingual Switcher */}
           <div className="lang-toggle">
             <button
@@ -177,16 +174,16 @@ function Topbar({
             </button>
           </div>
 
-          {/* Simulated Offline Toggle & Sync Queue */}
+          {/* Offline Queue Indicator */}
           <button
             type="button"
             className={`net-status-pill ${isOffline ? 'offline' : 'online'}`}
             onClick={onToggleOffline}
-            title="Click to toggle Simulated Offline mode (tests local queueing & syncing)"
+            title="Offline mode queues your responses and syncs when connection resumes"
           >
             {isOffline ? <WifiOff size={13} /> : <Wifi size={13} />}
-            <span>{isOffline ? 'Simulated Offline' : 'Online'}</span>
-            {queuedCount > 0 && <span className="badge-pill gold">({queuedCount} queued)</span>}
+            <span>{isOffline ? t.offlineModeActive : t.onlineSynced}</span>
+            {queuedCount > 0 && <span className="badge-pill gold">({queuedCount} {t.pendingQueue})</span>}
           </button>
 
           {queuedCount > 0 && (
@@ -200,21 +197,6 @@ function Topbar({
             </button>
           )}
 
-          {/* Architecture / Tour Modal */}
-          <button type="button" className="tour-btn" onClick={onOpenTour}>
-            <Sparkles size={14} /> Brief & Architecture
-          </button>
-
-          {/* Reset Demo */}
-          <button
-            type="button"
-            className="btn-reset-demo"
-            onClick={onResetDemo}
-            title="Reset demo data to initial pristine archetypes"
-          >
-            <RotateCcw size={14} /> Reset
-          </button>
-
           {/* Sign Out */}
           <button type="button" className="btn-secondary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={onSignOut}>
             <LogOut size={14} /> {t.signOut}
@@ -226,41 +208,30 @@ function Topbar({
 }
 
 // ----------------------------------------------------
-// Authentication & Hackathon Quick Start
+// Authentication Screen
 // ----------------------------------------------------
 function AuthScreen({
   onAuthenticated,
   lang,
   onLangChange,
-  onOpenTour,
+  activeTab,
+  onTabChange,
 }: {
   onAuthenticated: (auth: Session) => void;
   lang: Language;
   onLangChange: (lang: Language) => void;
-  onOpenTour: () => void;
+  activeTab: ActiveTab;
+  onTabChange: (tab: ActiveTab) => void;
 }) {
   const [mode, setMode] = useState<'sign-in' | 'register'>('sign-in');
   const [role, setRole] = useState<'student' | 'teacher'>('student');
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('student@prism.demo');
-  const [password, setPassword] = useState('PrismDemo!2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [classroomCode, setClassroomCode] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const t = TRANSLATIONS[lang];
-
-  const quickLogin = async (targetEmail: string) => {
-    setBusy(true);
-    setError('');
-    try {
-      const result = await api.login(targetEmail, 'PrismDemo!2026');
-      localStorage.setItem(sessionKey, JSON.stringify(result));
-      onAuthenticated(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to log in.');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -283,7 +254,48 @@ function AuthScreen({
   return (
     <main className="auth-page">
       <nav>
-        <Brand />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ cursor: 'pointer' }} onClick={() => onTabChange('home')}>
+            <Brand />
+          </div>
+          <div className="site-nav-tabs">
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'home' ? 'active' : ''}`}
+              onClick={() => onTabChange('home')}
+            >
+              {t.navHome}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'curriculum' ? 'active' : ''}`}
+              onClick={() => onTabChange('curriculum')}
+            >
+              {t.navCurriculum}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'faq' ? 'active' : ''}`}
+              onClick={() => onTabChange('faq')}
+            >
+              {t.navFaq}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'engines' ? 'active' : ''}`}
+              onClick={() => onTabChange('engines')}
+            >
+              {t.navEngines}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'app' ? 'active' : ''}`}
+              onClick={() => onTabChange('app')}
+            >
+              {t.navSignIn}
+            </button>
+          </div>
+        </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <div className="lang-toggle">
             <button
@@ -308,11 +320,8 @@ function AuthScreen({
               తెలుగు
             </button>
           </div>
-          <button type="button" className="tour-btn" onClick={onOpenTour}>
-            <Sparkles size={14} /> Code Kernel '26 Brief
-          </button>
           <span className="secure">
-            <LockKeyhole size={14} /> CBSE Mathematics 2026–27
+            <LockKeyhole size={14} /> {t.cbseLabel}
           </span>
         </div>
       </nav>
@@ -320,24 +329,21 @@ function AuthScreen({
       <section className="auth-layout">
         <div className="auth-story">
           <span className="eyebrow">{t.boardTag}</span>
-          <h1>Misconception-aware learning that keeps teachers at the centre.</h1>
-          <p>
-            PRISM bridges the gap between student diagnostic evidence and teacher classroom action
-            using transparent rules, interactive visual tools, and an editable Intervention Compiler.
-          </p>
+          <h1>{t.authHeroHeading}</h1>
+          <p>{t.authHeroPara}</p>
 
           <div className="auth-points">
             <span>
-              <CheckCircle2 /> <b>Transparent Rules Engine:</b> Explainable hypotheses, zero hallucinations.
+              <CheckCircle2 /> <b>{t.authBullet1Bold}</b> {t.authBullet1}
             </span>
             <span>
-              <CheckCircle2 /> <b>3-Part Adaptation:</b> Visual learn, scaffolded solve, independent transfer test.
+              <CheckCircle2 /> <b>{t.authBullet2Bold}</b> {t.authBullet2}
             </span>
             <span>
-              <CheckCircle2 /> <b>Teacher Intervention Compiler:</b> Turns learner evidence into editable pod plans.
+              <CheckCircle2 /> <b>{t.authBullet3Bold}</b> {t.authBullet3}
             </span>
             <span>
-              <CheckCircle2 /> <b>Built for Indian Classrooms:</b> English, Hindi & Telugu with offline queueing.
+              <CheckCircle2 /> <b>{t.authBullet4Bold}</b> {t.authBullet4}
             </span>
           </div>
         </div>
@@ -363,68 +369,6 @@ function AuthScreen({
           <h2>{mode === 'sign-in' ? t.welcomeBack : t.createWorkspace}</h2>
           <p>{t.welcomeSub}</p>
 
-          {/* Quick Demo Persona Launcher */}
-          {mode === 'sign-in' && (
-            <div className="persona-quick-grid">
-              <span className="eyebrow">ONE-CLICK HACKATHON DEMO PERSONAS</span>
-              <button
-                type="button"
-                className="quick-persona-card"
-                onClick={() => quickLogin('student@prism.demo')}
-              >
-                <div>
-                  <b>🟣 Aarav Sharma (Student)</b>
-                  <small>Denominator Misconception → Visual Fraction Bar Route</small>
-                </div>
-                <ChevronRight size={16} />
-              </button>
-              <button
-                type="button"
-                className="quick-persona-card"
-                onClick={() => quickLogin('diya@prism.demo')}
-              >
-                <div>
-                  <b>🟠 Diya Patel (Student)</b>
-                  <small>Prerequisite Gap → Equal-Parts Foundation Route</small>
-                </div>
-                <ChevronRight size={16} />
-              </button>
-              <button
-                type="button"
-                className="quick-persona-card"
-                onClick={() => quickLogin('kabir@prism.demo')}
-              >
-                <div>
-                  <b>🔵 Kabir Verma (Student)</b>
-                  <small>Calculation Slips → Scaffolded Practice Route</small>
-                </div>
-                <ChevronRight size={16} />
-              </button>
-              <button
-                type="button"
-                className="quick-persona-card"
-                onClick={() => quickLogin('meera@prism.demo')}
-              >
-                <div>
-                  <b>🟢 Meera Iyer (Student)</b>
-                  <small>Demonstrated Mastery → Recipe Scaling Extension Route</small>
-                </div>
-                <ChevronRight size={16} />
-              </button>
-              <button
-                type="button"
-                className="quick-persona-card"
-                onClick={() => quickLogin('teacher@prism.demo')}
-              >
-                <div>
-                  <b>👩‍🏫 Ms. Ananya (Teacher)</b>
-                  <small>Control Room · Teacher Intervention Compiler & Grouping</small>
-                </div>
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          )}
-
           {mode === 'register' && (
             <>
               <label>
@@ -433,7 +377,7 @@ function AuthScreen({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Your full name"
+                  placeholder={t.fullNamePlaceholder}
                 />
               </label>
               <div className="role-select">
@@ -463,6 +407,7 @@ function AuthScreen({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@school.edu"
+              autoComplete="email"
             />
           </label>
           <label>
@@ -473,13 +418,15 @@ function AuthScreen({
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder={t.passwordPlaceholder}
+              autoComplete="current-password"
             />
           </label>
 
           {error && <div className="errorbox">{error}</div>}
 
           <button type="submit" className="btn-primary" disabled={busy}>
-            {busy ? 'Please wait…' : mode === 'sign-in' ? 'Sign in with credentials' : 'Create secure account'}{' '}
+            {busy ? '…' : mode === 'sign-in' ? t.signInBtn : t.createAccountBtn}{' '}
             <ArrowRight size={17} />
           </button>
         </form>
@@ -517,6 +464,7 @@ function StudentHome({
   const [error, setError] = useState('');
   const [lastReason, setLastReason] = useState('');
   const [showCelebration, setShowCelebration] = useState(false);
+  const [showJoinModal, setShowJoinModal] = useState(false);
   const t = TRANSLATIONS[lang];
 
   const load = () =>
@@ -536,6 +484,7 @@ function StudentHome({
     setFeedback('');
     setAnswer('');
     setIndex(0);
+    setShowCelebration(false);
     setSelected(unit);
     setStage(nextStage);
     try {
@@ -572,11 +521,14 @@ function StudentHome({
         { question_id: question.id, response: answer, stage, submission_id },
         token
       );
-      setFeedback(`${result.correct ? t.correct : t.keepGoing}${result.feedback}`);
+      setFeedback(
+        `${result.correct ? t.correct : t.keepGoing}${getLocalizedExplanation(question.id, result.feedback, lang)}`
+      );
       setLastReason(result.reason);
 
       if (stage === 'test' && result.correct) {
         setShowCelebration(true);
+        setTimeout(() => setShowCelebration(false), 4200);
       }
 
       load();
@@ -600,6 +552,16 @@ function StudentHome({
   if (selected) {
     return (
       <main className="workspace">
+        {showCelebration && (
+          <div className="celebration-banner" role="status" aria-live="polite">
+            <span>🎉</span>
+            <div>
+              <b>{t.transferVerifiedTitle}</b>
+              <p>{t.transferVerifiedDesc}</p>
+            </div>
+            <CheckCircle2 size={28} style={{ color: '#10b981' }} />
+          </div>
+        )}
         <section className="learning-view">
           <button className="back" onClick={() => setSelected(null)}>
             ← {t.allChapters}
@@ -609,10 +571,10 @@ function StudentHome({
             <span className={`chapter-dot ${selected.color}`} />
             <div>
               <span className="eyebrow">
-                {t.boardTag} · CHAPTER {selected.number} · {stage.toUpperCase()}
+                {t.boardTag} · {t.chapterPrefix} {selected.number} · {stage.toUpperCase()}
               </span>
-              <h1>{selected.title}</h1>
-              <p>{selected.summary}</p>
+              <h1>{getLocalizedChapterTitle(selected.id, selected.title, lang)}</h1>
+              <p>{getLocalizedChapterSummary(selected.id, selected.summary, lang)}</p>
             </div>
           </div>
 
@@ -681,11 +643,11 @@ function StudentHome({
                         : t.diagnostic}
                     </span>
                     <span>
-                      Question {index + 1} of {questions.length}
+                      {t.questionWord} {index + 1} {t.questionMetaOf} {questions.length}
                     </span>
                   </div>
 
-                  <h2>{questions[index].prompt}</h2>
+                  <h2>{getLocalizedQuestionPrompt(questions[index].id, questions[index].prompt, lang)}</h2>
 
                   <div className="answers">
                     {questions[index].options.map((option) => (
@@ -695,7 +657,7 @@ function StudentHome({
                         className={answer === option ? 'selected' : ''}
                         onClick={() => setAnswer(option)}
                       >
-                        {option}
+                        {getLocalizedOptionLabel(option, lang)}
                       </button>
                     ))}
                   </div>
@@ -705,7 +667,7 @@ function StudentHome({
                       <p>{feedback}</p>
                       {lastReason && (
                         <p style={{ fontSize: '12px', color: '#047857' }}>
-                          <b>Diagnostic Engine Note:</b> {lastReason}
+                          <b>{t.diagnosticEngineNote}</b> {lastReason}
                         </p>
                       )}
                       <button
@@ -745,7 +707,7 @@ function StudentHome({
                   )}
                 </>
               ) : (
-                <p>Loading your learning activity…</p>
+                <p>{t.loadingActivity}</p>
               )}
             </article>
           </div>
@@ -773,7 +735,7 @@ function StudentHome({
                   marginTop: '10px',
                 }}
               >
-                <b>Identified Barrier:</b> {currentProgress.misconception}
+                <b>{t.identifiedBarrier}</b> {currentProgress.misconception}
               </div>
             )}
 
@@ -796,32 +758,42 @@ function StudentHome({
         <div>
           <span className="eyebrow">{t.boardTag}</span>
           <h1>
-            Good afternoon, {user.name.split(' ')[0]}.
+            {(() => {
+              const h = new Date().getHours();
+              return h < 12 ? t.greetingMorning : h < 17 ? t.greetingAfternoon : t.greetingEvening;
+            })()}, {user.name.split(' ')[0]}.
           </h1>
-          <p>
-            Choose a chapter to begin a quick diagnostic, build understanding with adaptive visual
-            tools, and verify independent transfer.
-          </p>
+          <p>{t.studentHeroSub}</p>
+          <div style={{ marginTop: '14px', marginBottom: '14px', display: 'flex', gap: '10px' }}>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ background: '#fff', fontSize: '13px', padding: '6px 14px' }}
+              onClick={() => setShowJoinModal(true)}
+            >
+              <UserPlus size={15} /> {t.joinClassroomBtn}
+            </button>
+          </div>
           <div className="hero-stats">
             <span>
-              <b>{completed}</b> chapters started
+              <b>{completed}</b> {t.chaptersStarted}
             </span>
             <span>
-              <b>8</b> CBSE modules available
+              <b>8</b> {t.cbseModulesAvailable}
             </span>
             <span>
-              <b>Class VIII</b> NCERT reference
+              <b>{t.class8NcertRef}</b>
             </span>
           </div>
         </div>
         <div className="hero-mark">
           <Sparkles />
           <span>
-            Diagnose
+            {t.pillarDiagnose}
             <br />
-            Adapt
+            {t.pillarAdapt}
             <br />
-            Verify
+            {t.pillarVerify}
           </span>
         </div>
       </section>
@@ -830,10 +802,10 @@ function StudentHome({
 
       <section className="catalogue-head">
         <div>
-          <span className="eyebrow">CBSE MATHEMATICS COURSE CATALOGUE</span>
-          <h2>Mathematics, one concept at a time.</h2>
+          <span className="eyebrow">{t.courseCatalogueTitle}</span>
+          <h2>{t.courseCatalogueSub}</h2>
         </div>
-        <span className="catalogue-count">{units.length} learning modules</span>
+        <span className="catalogue-count">{units.length} {t.learningModulesCount}</span>
       </section>
 
       <section className="chapter-grid">
@@ -844,28 +816,40 @@ function StudentHome({
             <article className="chapter-card" key={unit.id}>
               <div className="chapter-card-top">
                 <span className={`chapter-dot ${unit.color}`} />
-                <span>CHAPTER {unit.number.toString().padStart(2, '0')}</span>
+                <span>{t.chapterPrefix} {unit.number.toString().padStart(2, '0')}</span>
               </div>
-              <h3>{unit.title}</h3>
-              <p>{unit.summary}</p>
+              <h3>{getLocalizedChapterTitle(unit.id, unit.title, lang)}</h3>
+              <p>{getLocalizedChapterSummary(unit.id, unit.summary, lang)}</p>
               <div className="card-bottom">
                 <span>
-                  <Clock3 size={14} /> {unit.minutes} min
+                  <Clock3 size={14} /> {unit.minutes} {lang === 'hi' ? 'मिनट' : lang === 'te' ? 'నిమి' : 'min'}
                 </span>
                 <span>
-                  {hasEvidence ? `${Math.round(item.mastery * 100)}% mastery` : 'Not started'}
+                  {hasEvidence ? `${Math.round(item.mastery * 100)}% ${t.masteryLabel}` : t.notStarted}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => start(unit, hasEvidence ? 'practice' : 'diagnostic')}
               >
-                {hasEvidence ? 'Continue chapter' : 'Start chapter'} <ArrowRight size={16} />
+                {hasEvidence ? t.continueChapter : t.startChapter} <ArrowRight size={16} />
               </button>
             </article>
           );
         })}
       </section>
+
+      {showJoinModal && (
+        <JoinClassroomModal
+          lang={lang}
+          onJoin={async (code) => {
+            await api.joinClassroom(code, token);
+            alert(`Enrolled into classroom ${code}! Your responses now stream to your teacher.`);
+            load();
+          }}
+          onClose={() => setShowJoinModal(false)}
+        />
+      )}
     </main>
   );
 }
@@ -889,6 +873,8 @@ function TeacherHome({
   const [activeEditPlan, setActiveEditPlan] = useState<Plan | null>(null);
   const [activeDossierStudent, setActiveDossierStudent] = useState<StudentDetail | null>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [recompiling, setRecompiling] = useState(false);
   const t = TRANSLATIONS[lang];
 
   const loadWorkspace = () =>
@@ -955,6 +941,19 @@ function TeacherHome({
     }
   };
 
+  const handleRecompile = async () => {
+    setRecompiling(true);
+    try {
+      await api.recompileInterventions(token);
+      await loadWorkspace();
+      alert('⚡ Intervention pods recompiled successfully from latest live student evidence!');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to recompile interventions');
+    } finally {
+      setRecompiling(false);
+    }
+  };
+
   return (
     <main className="workspace">
       <section className="teacher-head">
@@ -967,6 +966,25 @@ function TeacherHome({
         </div>
 
         <div className="teacher-head-actions">
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ background: '#f5f3ff', color: '#6d28d9', borderColor: '#c4b5fd' }}
+            onClick={() => setShowInviteModal(true)}
+            title="Invite real students to join this class"
+          >
+            <UserPlus size={16} /> {t.enrollStudentsBtn} ({data?.class_code || '8A-CBSE'})
+          </button>
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }}
+            onClick={handleRecompile}
+            disabled={recompiling}
+            title="Re-run deterministic rules engine on latest student attempts"
+          >
+            <Sparkles size={16} /> {recompiling ? t.recompilingText : t.recompilePodsBtn}
+          </button>
           <button
             type="button"
             className="btn-primary"
@@ -987,17 +1005,17 @@ function TeacherHome({
         <article>
           <span>{t.activeLearners}</span>
           <b>{data?.learners.length || 0}</b>
-          <small>Enrolled in Class 8-A</small>
+          <small>{t.enrolledInClass}</small>
         </article>
         <article>
-          <span>Average Concept Mastery</span>
+          <span>{t.averageMastery}</span>
           <b>{avgMastery}%</b>
-          <small>Across active learning modules</small>
+          <small>{t.acrossActiveModules}</small>
         </article>
         <article>
           <span>{t.evidenceCollected}</span>
           <b>{totalEvidence}</b>
-          <small>Observable student responses</small>
+          <small>{t.observableResponses}</small>
         </article>
       </section>
 
@@ -1011,9 +1029,9 @@ function TeacherHome({
           <div className="panel-title">
             <div>
               <span className="eyebrow">{t.interventionReview}</span>
-              <h2>Teacher-Approved Small Groups</h2>
+              <h2>{t.teacherApprovedGroups}</h2>
             </div>
-            <span className="badge-pill purple">Decision Support Active</span>
+            <span className="badge-pill purple">{t.decisionSupportActive}</span>
           </div>
 
           {data?.interventions && data.interventions.length > 0 ? (
@@ -1071,7 +1089,7 @@ function TeacherHome({
 
                 {plan.teacher_notes && (
                   <div className="plan-notes-banner">
-                    <b>Teacher Notes:</b> {plan.teacher_notes}
+                    <b>{t.teacherNotes}</b> {plan.teacher_notes}
                   </div>
                 )}
 
@@ -1096,13 +1114,13 @@ function TeacherHome({
                     className="btn-reject"
                     onClick={() => handleRejectPlan(plan.id)}
                   >
-                    Dismiss
+                    {t.dismiss}
                   </button>
                 </div>
               </section>
             ))
           ) : (
-            <p>Loading compiled interventions…</p>
+            <p>{t.loadingInterventions}</p>
           )}
         </article>
 
@@ -1113,7 +1131,7 @@ function TeacherHome({
               <span className="eyebrow">CLASSROOM EVIDENCE PULSE</span>
               <h2>{t.currentClassView}</h2>
             </div>
-            <span className="badge-pill teal">Click to inspect</span>
+            <span className="badge-pill teal">{t.clickToInspect}</span>
           </div>
 
           <div className="learner-list">
@@ -1127,7 +1145,7 @@ function TeacherHome({
                 <div>
                   <b>{learner.name}</b>
                   <small>
-                    {learner.code} · {learner.evidence_count} evidence points
+                    {learner.code} · {learner.evidence_count} {t.evidencePoints}
                   </small>
                   {learner.misconception && (
                     <span
@@ -1182,10 +1200,119 @@ function TeacherHome({
           plans={data.interventions}
           classCode={data.class_code}
           teacherName={data.teacher_name || user.name}
+          learners={data.learners}
           onClose={() => setShowPrintModal(false)}
         />
       )}
+
+      {/* Invite Students Real Data Modal */}
+      {showInviteModal && data && (
+        <InviteStudentsModal
+          classCode={data.class_code}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
     </main>
+  );
+}
+
+// ----------------------------------------------------
+// Public Header for Unauthenticated Visitors
+// ----------------------------------------------------
+function PublicHeader({
+  lang,
+  onLangChange,
+  activeTab,
+  onTabChange,
+}: {
+  lang: Language;
+  onLangChange: (lang: Language) => void;
+  activeTab: ActiveTab;
+  onTabChange: (tab: ActiveTab) => void;
+}) {
+  const t = TRANSLATIONS[lang];
+
+  return (
+    <header className="topbar">
+      <div className="topbar-content">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ cursor: 'pointer' }} onClick={() => onTabChange('home')}>
+            <Brand />
+          </div>
+          <nav className="site-nav-tabs">
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'home' ? 'active' : ''}`}
+              onClick={() => onTabChange('home')}
+            >
+              {t.navHome}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'curriculum' ? 'active' : ''}`}
+              onClick={() => onTabChange('curriculum')}
+            >
+              {t.navCurriculum}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'faq' ? 'active' : ''}`}
+              onClick={() => onTabChange('faq')}
+            >
+              {t.navFaq}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'engines' ? 'active' : ''}`}
+              onClick={() => onTabChange('engines')}
+            >
+              {t.navEngines}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'app' ? 'active' : ''}`}
+              onClick={() => onTabChange('app')}
+            >
+              {t.navSignIn}
+            </button>
+          </nav>
+        </div>
+
+        <div className="showcase-actions">
+          <div className="lang-toggle">
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'en' ? 'active' : ''}`}
+              onClick={() => onLangChange('en')}
+            >
+              EN
+            </button>
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'hi' ? 'active' : ''}`}
+              onClick={() => onLangChange('hi')}
+            >
+              हिंदी
+            </button>
+            <button
+              type="button"
+              className={`lang-btn ${lang === 'te' ? 'active' : ''}`}
+              onClick={() => onLangChange('te')}
+            >
+              తెలుగు
+            </button>
+          </div>
+          <button
+            type="button"
+            className="btn-primary"
+            style={{ padding: '6px 14px', fontSize: '13px' }}
+            onClick={() => onTabChange('app')}
+          >
+            {t.navGetStarted} <ArrowRight size={14} />
+          </button>
+        </div>
+      </div>
+    </header>
   );
 }
 
@@ -1201,6 +1328,7 @@ export default function App() {
     }
   });
 
+  const [activeTab, setActiveTab] = useState<ActiveTab>('app');
   const [lang, setLang] = useState<Language>('en');
   const [isOffline, setIsOffline] = useState(false);
   const [offlineQueue, setOfflineQueue] = useState<QueuedAttempt[]>(() => {
@@ -1215,6 +1343,7 @@ export default function App() {
   const signOut = () => {
     localStorage.removeItem(sessionKey);
     setSession(null);
+    setActiveTab('app');
   };
 
   const selectPersona = async (email: string) => {
@@ -1222,6 +1351,7 @@ export default function App() {
       const res = await api.login(email, 'PrismDemo!2026');
       localStorage.setItem(sessionKey, JSON.stringify(res));
       setSession(res);
+      setActiveTab('app');
     } catch (e) {
       console.error('Persona login error:', e);
     }
@@ -1269,13 +1399,40 @@ export default function App() {
   if (!session) {
     return (
       <>
-        <AuthScreen
-          onAuthenticated={setSession}
-          lang={lang}
-          onLangChange={setLang}
-          onOpenTour={() => setShowTour(true)}
-        />
-        {showTour && <HackathonTourModal onClose={() => setShowTour(false)} />}
+        {activeTab === 'app' ? (
+          <AuthScreen
+            onAuthenticated={(s) => {
+              setSession(s);
+              setActiveTab('app');
+            }}
+            lang={lang}
+            onLangChange={setLang}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+          />
+        ) : (
+          <>
+            <PublicHeader
+              lang={lang}
+              onLangChange={setLang}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+            />
+            {activeTab === 'home' && (
+              <LandingPage
+                lang={lang}
+                onLaunchApp={() => setActiveTab('app')}
+              />
+            )}
+            {activeTab === 'curriculum' && (
+              <CurriculumPage lang={lang} onLaunchApp={() => setActiveTab('app')} />
+            )}
+            {activeTab === 'faq' && <AeoGeoFaqPage lang={lang} />}
+            {activeTab === 'engines' && (
+              <EnginesHub lang={lang} onNavigateToCurriculum={() => setActiveTab('curriculum')} />
+            )}
+          </>
+        )}
       </>
     );
   }
@@ -1286,35 +1443,47 @@ export default function App() {
         user={session.user}
         lang={lang}
         onLangChange={setLang}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
         isOffline={isOffline}
         onToggleOffline={() => setIsOffline(!isOffline)}
         queuedCount={offlineQueue.length}
         onSyncQueue={syncOfflineQueue}
-        onResetDemo={handleResetDemo}
-        onOpenTour={() => setShowTour(true)}
-        onSelectPersona={selectPersona}
         onSignOut={signOut}
       />
 
-      {session.user.role === 'teacher' ? (
-        <TeacherHome
-          user={session.user}
-          token={session.access_token}
+      {activeTab === 'home' && (
+        <LandingPage
           lang={lang}
-          onSignOut={signOut}
-        />
-      ) : (
-        <StudentHome
-          user={session.user}
-          token={session.access_token}
-          lang={lang}
-          isOffline={isOffline}
-          onQueueAttempt={handleQueueAttempt}
-          onSignOut={signOut}
+          onLaunchApp={() => setActiveTab('app')}
         />
       )}
-
-      {showTour && <HackathonTourModal onClose={() => setShowTour(false)} />}
+      {activeTab === 'curriculum' && (
+        <CurriculumPage lang={lang} onLaunchApp={() => setActiveTab('app')} />
+      )}
+      {activeTab === 'faq' && <AeoGeoFaqPage lang={lang} />}
+      {activeTab === 'engines' && (
+        <EnginesHub lang={lang} onNavigateToCurriculum={() => setActiveTab('curriculum')} />
+      )}
+      {activeTab === 'app' && (
+        session.user.role === 'teacher' ? (
+          <TeacherHome
+            user={session.user}
+            token={session.access_token}
+            lang={lang}
+            onSignOut={signOut}
+          />
+        ) : (
+          <StudentHome
+            user={session.user}
+            token={session.access_token}
+            lang={lang}
+            isOffline={isOffline}
+            onQueueAttempt={handleQueueAttempt}
+            onSignOut={signOut}
+          />
+        )
+      )}
     </>
   );
 }

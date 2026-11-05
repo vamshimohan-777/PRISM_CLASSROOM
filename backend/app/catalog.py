@@ -24,5 +24,58 @@ QUESTION_BANK = {
 QUESTION_BANK["rational-numbers"] = [("diagnostic", "Which fraction is equivalent to 1/2?", ["2/3", "2/4", "3/4", "1/4"], "2/4", "Multiply the numerator and denominator of 1/2 by 2."), ("practice", "Complete: 3/5 = __/10", ["5", "6", "7", "8"], "6", "Multiply both numerator and denominator by 2."), ("test", "A recipe uses 2/3 cup of milk. In sixths this is…", ["3/6", "4/6", "5/6", "2/6"], "4/6", "Multiply 2/3 by 2/2 to write it in sixths.")]
 
 
+# ---------------------------------------------------------------------------
+# Additional authentic NCERT Class VIII questions (3 per chapter → 6 total each)
+# ---------------------------------------------------------------------------
+
+QUESTION_BANK["rational-numbers"] += [
+    ("diagnostic", "Which property does 1/2 + 1/3 = 1/3 + 1/2 demonstrate?", ["Associativity", "Commutativity", "Distributivity", "Closure"], "Commutativity", "Changing the order of addition does not change the sum — this is commutativity. (NCERT Class 8, Ch 1)"),
+    ("practice", "What is the additive inverse of -3/5?", ["-5/3", "3/5", "5/3", "-3/5"], "3/5", "The additive inverse of a rational number p/q is -p/q. Additive inverse of -3/5 is 3/5. (NCERT Class 8, Ch 1)"),
+    ("test", "Find a rational number between 1/4 and 1/2.", ["1/3", "2/3", "3/4", "1/8"], "1/3", "Mean of 1/4 and 1/2 = (1/4 + 1/2)/2 = (3/4)/2 = 3/8. 1/3 ≈ 0.333 lies between 0.25 and 0.5. (NCERT Class 8, Ch 1)"),
+]
+
+QUESTION_BANK["linear-equations"] += [
+    ("diagnostic", "If 7x = 49, what is x?", ["6", "7", "8", "42"], "7", "Divide both sides by 7: x = 49 ÷ 7 = 7. (NCERT Class 8, Ch 2)"),
+    ("practice", "The sum of two consecutive integers is 37. The integers are:", ["18 and 19", "17 and 20", "15 and 22", "16 and 21"], "18 and 19", "If n and n+1 are consecutive integers: 2n + 1 = 37, so n = 18. (NCERT Class 8, Ch 2)"),
+    ("test", "Raju's father is 26 years older than Raju. After 3 years the sum of their ages will be 66. What is Raju's current age?", ["16", "17", "19", "20"], "17", "Let Raju's age = x. Then: (x+3) + (x+26+3) = 66 → 2x + 32 = 66 → x = 17. (NCERT Class 8, Ch 2, Example)"),
+]
+
+QUESTION_BANK["quadrilaterals"] += [
+    ("diagnostic", "How many sides does a polygon need to have for interior angle sum to be 540°?", ["4", "5", "6", "7"], "5", "(n-2) × 180 = 540 → n-2 = 3 → n = 5. A pentagon has angle sum 540°. (NCERT Class 8, Ch 3)"),
+    ("practice", "In a rhombus, the diagonals bisect each other at:", ["60°", "90°", "120°", "180°"], "90°", "The diagonals of a rhombus bisect each other at right angles (90°). (NCERT Class 8, Ch 3)"),
+    ("test", "One angle of a parallelogram is 75°. What are the other three angles?", ["75°, 105°, 105°", "105°, 75°, 75°", "105°, 75°, 105°", "75°, 75°, 75°"], "105°, 75°, 105°", "Adjacent angles in a parallelogram are supplementary (sum = 180°). So 180°−75° = 105°. Opposite angles are equal. (NCERT Class 8, Ch 3)"),
+]
+
+QUESTION_BANK["practical-geometry"] += [
+    ("diagnostic", "To construct a unique quadrilateral ABCD you need at least:", ["3 sides only", "5 measurements (sides and angles)", "2 sides only", "4 sides and no angles"], "5 measurements (sides and angles)", "A quadrilateral has 5 independent elements needed for a unique construction. (NCERT Class 8, Ch 4)"),
+    ("practice", "In construction ABCD with AB = 4cm, angle A = 75°, AD = 5cm, angle B = 110°, BC = 3cm, which element is NOT directly needed first?", ["AB", "CD", "angle A", "angle B"], "CD", "With 2 adjacent sides and 2 included angles, CD is determined by construction, not given directly. (NCERT Class 8, Ch 4)"),
+    ("test", "A square has side 5cm. What length is its diagonal?", ["5 cm", "5√2 cm ≈ 7.07 cm", "10 cm", "25 cm"], "5√2 cm ≈ 7.07 cm", "By Pythagorean theorem: diagonal = √(5² + 5²) = √50 = 5√2 cm. (NCERT Class 8, Ch 4)"),
+]
+
+QUESTION_BANK["data-handling"] += [
+    ("diagnostic", "In a pie chart for a data set, the angle for a category with 25% of data is:", ["45°", "90°", "180°", "360°"], "90°", "25% of 360° = (25/100) × 360° = 90°. (NCERT Class 8, Ch 5)"),
+    ("practice", "The numbers 2, 4, 5, 3, 6 are arranged in ascending order. The median is:", ["3", "4", "5", "6"], "4", "Ascending order: 2, 3, 4, 5, 6. Middle value (3rd of 5) = 4. (NCERT Class 8, Ch 5)"),
+    ("test", "A bag contains 5 red and 3 blue marbles. What is the probability of picking red?", ["3/8", "5/8", "5/3", "1/2"], "5/8", "P(red) = 5 favorable / 8 total = 5/8. (NCERT Class 8, Ch 5)"),
+]
+
+QUESTION_BANK["squares-roots"] += [
+    ("diagnostic", "The number 169 is a perfect square of:", ["11", "12", "13", "14"], "13", "13 × 13 = 169. (NCERT Class 8, Ch 6)"),
+    ("practice", "Find √(324) using prime factorisation. 324 = 4 × 81 = 2² × 3⁴. So √324 =", ["16", "18", "20", "9"], "18", "√(2² × 3⁴) = 2 × 3² = 2 × 9 = 18. (NCERT Class 8, Ch 6)"),
+    ("test", "(3, 4, 5) is a Pythagorean triplet because:", ["3+4 = 7, close to 5", "3² + 4² = 5²", "3×4 = 12, 12-5 = 7", "All are odd"], "3² + 4² = 5²", "9 + 16 = 25 = 5². This satisfies a² + b² = c². (NCERT Class 8, Ch 6)"),
+]
+
+QUESTION_BANK["cubes-roots"] += [
+    ("diagnostic", "Which is a perfect cube?", ["8", "12", "18", "20"], "8", "2 × 2 × 2 = 8. (NCERT Class 8, Ch 7)"),
+    ("practice", "Find the cube root of 1000.", ["10", "100", "30", "50"], "10", "10 × 10 × 10 = 1000. ∛1000 = 10. (NCERT Class 8, Ch 7)"),
+    ("test", "Is 392 a perfect cube? Its prime factorisation is 2³ × 7².", ["Yes, ∛392 = 14", "No, 7 appears only twice — needs one more 7", "Yes, because 392 = 8 × 49", "No, because 2 appears three times"], "No, 7 appears only twice — needs one more 7", "For a perfect cube every prime factor must appear in multiples of 3. 7² means 7 needs one more. (NCERT Class 8, Ch 7)"),
+]
+
+QUESTION_BANK["comparing-quantities"] += [
+    ("diagnostic", "A shopkeeper buys a pen for ₹10 and sells it for ₹13. Profit percentage is:", ["13%", "30%", "3%", "10%"], "30%", "Profit = ₹3. Profit% = (3/10) × 100 = 30%. (NCERT Class 8, Ch 8)"),
+    ("practice", "Find the compound interest on ₹10,000 at 10% per annum for 2 years.", ["₹1,000", "₹2,000", "₹2,100", "₹2,500"], "₹2,100", "CI = P[(1+r)^n - 1] = 10000[(1.1)² - 1] = 10000 × 0.21 = ₹2,100. (NCERT Class 8, Ch 8)"),
+    ("test", "The price of a refrigerator was ₹14,000. It was sold at a loss of 5%. Find the selling price.", ["₹13,300", "₹13,000", "₹12,500", "₹13,500"], "₹13,300", "Loss = 5% of 14000 = ₹700. SP = 14000 - 700 = ₹13,300. (NCERT Class 8, Ch 8)"),
+]
+
+
 def chapter_for(chapter_id: str) -> dict | None:
     return next((chapter for chapter in CHAPTERS if chapter["id"] == chapter_id), None)

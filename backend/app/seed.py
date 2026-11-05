@@ -29,9 +29,10 @@ def main():
   room=Classroom(code="8A-CBSE",grade=CBSE_CURRICULUM["grade"],curriculum="CBSE-aligned · NCERT reference"); db.add(room); db.flush()
  teacher=db.query(Teacher).filter_by(demo_identity="TEACHER-PRISM").first()
  if not teacher:
-  teacher=Teacher(demo_identity="TEACHER-PRISM",name="Ms. Ananya (Demo)",classroom_id=room.id); db.add(teacher); db.flush()
+  teacher=Teacher(demo_identity="TEACHER-PRISM",name="Ms. Ananya",classroom_id=room.id); db.add(teacher); db.flush()
  else:
   teacher.classroom_id = room.id
+  teacher.name = "Ms. Ananya"
  seen_concepts = set()
  for cid,name,obj,pre in CONCEPTS:
   seen_concepts.add(cid)

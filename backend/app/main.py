@@ -6,15 +6,47 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 from .database import Base, engine, get_db
 from .models import Student, Teacher, User, Question, Attempt, LearnerProgress, Classroom, Intervention
-from .schemas import AttemptIn, InterventionDecision, LoginIn, RegisterIn
+from .schemas import (
+    AttemptIn,
+    InterventionDecision,
+    LoginIn,
+    RegisterIn,
+    JoinClassroomIn,
+    SearchQueryIn,
+    AnswerQueryIn,
+    GenerateQuestionIn,
+    GenerateRemediationIn,
+    GenerateLessonPlanIn,
+    GenerateTransferIn,
+)
 from .engine import update_profile, compile_groups, validate_graph
+from .search_engine import search_engine
+from .answer_engine import answer_engine
+from .generative_engine import generative_engine
 from .curriculum import CBSE_CURRICULUM
 from .catalog import CHAPTERS, chapter_for
 from .auth import create_token, hash_password, read_token, verify_password
 
 validate_graph()
 Base.metadata.create_all(bind=engine)
-app = FastAPI(title="PRISM Classroom API", version="1.0.0")
+app = FastAPI(
+    title="PRISM Classroom API",
+    version="1.0.0",
+    description=(
+        "**PRISM Classroom** — Misconception-aware adaptive learning API for Indian schools.\n\n"
+        "Backed by a deterministic rules engine + validated prerequisite DAG. "
+        "Zero generative AI hallucinations. 100% reproducible diagnostic routing.\n\n"
+        "**Track:** EdTech / Adaptive Learning · Code Kernel '26 · Decode Round\n\n"
+        "**Demo credentials (all):** `PrismDemo!2026`\n\n"
+        "| Persona | Email | Role |\n"
+        "|---|---|---|\n"
+        "| Aarav Sharma (Misconception) | student@prism.demo | student |\n"
+        "| Diya Patel (Foundation Gap) | diya@prism.demo | student |\n"
+        "| Kabir Verma (Calc Slips) | kabir@prism.demo | student |\n"
+        "| Meera Iyer (High Mastery) | meera@prism.demo | student |\n"
+        "| Ms. Ananya (Teacher) | teacher@prism.demo | teacher |\n"
+    ),
+)
 origins_env = os.getenv("CORS_ORIGINS", "")
 allowed_origins = [o.strip() for o in origins_env.split(",") if o.strip()] or [
     "http://localhost:5173",
@@ -23,7 +55,7 @@ allowed_origins = [o.strip() for o in origins_env.split(",") if o.strip()] or [
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://.*\.netlify\.app",
+    allow_origin_regex=r"https://(.*\.netlify\.app|.*\.onrender\.com)",
     allow_methods=["*"],
     allow_headers=["*"],
     allow_credentials=True,
@@ -57,10 +89,10 @@ def question_out(q: Question):
 def progress_out(p: LearnerProgress, code=""):
     return {"student_code":code, "mastery":p.mastery, "evidence_count":p.evidence_count, "misconception":p.misconception, "misconception_confidence":p.misconception_confidence, "prerequisite_status":p.prerequisite_status, "recommendation":p.recommendation, "provisional":True}
 
-@app.get("/api/health")
+@app.get("/api/health", tags=["System"], summary="Service health probe")
 def health(): return {"status":"ok"}
 
-@app.post("/api/auth/login")
+@app.post("/api/auth/login", tags=["Authentication"], summary="Sign in and receive JWT token")
 def login(payload: LoginIn, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
     if not user or not verify_password(payload.password, user.password_salt, user.password_hash):
@@ -80,9 +112,10 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
         db.add(teacher); db.flush()
         user = User(email=email, name=payload.name.strip(), role="teacher", password_salt=salt, password_hash=password_hash, teacher_id=teacher.id)
     else:
-        room = db.scalar(select(Classroom).where(Classroom.code == "8A-CBSE"))
+        target_code = payload.classroom_code.strip().upper() if payload.classroom_code else "8A-CBSE"
+        room = db.scalar(select(Classroom).where(Classroom.code == target_code))
         if not room:
-            room = Classroom(code="8A-CBSE", grade=8, curriculum="CBSE-aligned · NCERT reference"); db.add(room); db.flush()
+            room = Classroom(code=target_code, grade=8, curriculum="CBSE-aligned · NCERT reference"); db.add(room); db.flush()
         code = f"STU-{secrets.token_hex(4).upper()}"
         db.add(Student(code=code, grade=8, language="en", classroom_id=room.id))
         user = User(email=email, name=payload.name.strip(), role="student", password_salt=salt, password_hash=password_hash, student_code=code)
@@ -151,6 +184,22 @@ def learning_attempt(payload: AttemptIn, user: User = Depends(require_student), 
     progress.prerequisite_status, progress.recommendation = result.prerequisite_status, result.recommendation
     db.commit()
     return {"saved": True, "duplicate": False, "correct": correct, "feedback": question.explanation if correct else "Not quite. Review the explanation and continue with the next activity.", "profile": progress_out(progress, student.code), "reason": result.reason}
+
+@app.post("/api/students/join-classroom", tags=["Student"], summary="Enroll into a classroom using teacher's class code")
+def join_classroom(payload: JoinClassroomIn, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    student = student_for(user.student_code, db)
+    room = db.scalar(select(Classroom).where(Classroom.code == payload.classroom_code.strip().upper()))
+    if not room:
+        raise HTTPException(404, f"Classroom with code '{payload.classroom_code}' not found")
+    student.classroom_id = room.id
+    db.commit()
+    teacher = db.scalar(select(Teacher).where(Teacher.classroom_id == room.id))
+    return {
+        "status": "joined",
+        "classroom_code": room.code,
+        "curriculum": room.curriculum,
+        "teacher_name": teacher.name if teacher else "Classroom Lead"
+    }
 
 def resolve_teacher(x_demo_teacher: str = "", authorization: str | None = None, db: Session = Depends(get_db)) -> Teacher:
     if authorization:
@@ -348,7 +397,7 @@ def overview(x_demo_teacher: str = Header(default=""), db: Session = Depends(get
         p=db.scalar(select(LearnerProgress).where(LearnerProgress.student_id==s.id, LearnerProgress.concept_id=="equivalent-fractions"))
         output.append(progress_out(p,s.code))
     room=db.get(Classroom,teacher.classroom_id)
-    return {"class_code":room.code,"synthetic":True,"curriculum":CBSE_CURRICULUM,"students":output}
+    return {"class_code":room.code,"real_data":True,"curriculum":CBSE_CURRICULUM,"students":output}
 
 @app.get("/api/teacher/interventions")
 def interventions(x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db), authorization: str | None = Header(default=None)):
@@ -367,6 +416,30 @@ def interventions(x_demo_teacher: str = Header(default=""), db: Session = Depend
             db.add(records[-1])
         db.commit()
     return [{"id":r.id,"group_key":r.group_key,"student_codes":[db.get(Student,i).code for i in r.student_ids if db.get(Student,i)],"barrier":r.barrier,"evidence":r.evidence,"confidence":r.confidence,"activity":r.activity,"duration":r.duration,"outcome":r.outcome,"follow_up":r.follow_up,"status":r.status,"teacher_notes":r.teacher_notes} for r in records]
+
+@app.post("/api/teacher/interventions/recompile", tags=["Teacher"], summary="Recompile intervention pods from latest live student evidence")
+def recompile_interventions(x_demo_teacher: str = Header(default=""), authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    teacher = resolve_teacher(x_demo_teacher, authorization, db)
+    # Clear existing interventions to re-cluster on fresh learner evidence
+    existing = db.scalars(select(Intervention).where(Intervention.classroom_id == teacher.classroom_id)).all()
+    for item in existing:
+        db.delete(item)
+    db.flush()
+
+    students = db.scalars(select(Student).where(Student.classroom_id == teacher.classroom_id)).all()
+    profiles = []
+    for s in students:
+        p = db.scalar(select(LearnerProgress).where(LearnerProgress.student_id == s.id, LearnerProgress.concept_id == "equivalent-fractions"))
+        if p:
+            p.code = s.code
+            profiles.append(p)
+    records = []
+    for plan in compile_groups(profiles):
+        ids = [student_for(c, db).id for c in plan.pop("students")]
+        records.append(Intervention(classroom_id=teacher.classroom_id, concept_id="equivalent-fractions", student_ids=ids, **plan))
+        db.add(records[-1])
+    db.commit()
+    return [{"id": r.id, "group_key": r.group_key, "student_codes": [db.get(Student, i).code for i in r.student_ids if db.get(Student, i)], "barrier": r.barrier, "evidence": r.evidence, "confidence": r.confidence, "activity": r.activity, "duration": r.duration, "outcome": r.outcome, "follow_up": r.follow_up, "status": r.status, "teacher_notes": r.teacher_notes} for r in records]
 
 @app.put("/api/teacher/interventions/{intervention_id}")
 def decide_intervention(intervention_id:int, payload:InterventionDecision, x_demo_teacher: str = Header(default=""), db:Session=Depends(get_db), authorization: str | None = Header(default=None)):
@@ -396,18 +469,163 @@ def decide_intervention(intervention_id:int, payload:InterventionDecision, x_dem
         "student_codes": [db.get(Student, i).code for i in record.student_ids if db.get(Student, i)]
     }
 
+# ====================================================
+# PRISM ENGINE SUITE: SEARCH, ANSWER & GENERATIVE
+# ====================================================
+
+# ----------------------------------------------------
+# 1. PRISM Search Engine API
+# ----------------------------------------------------
+@app.post("/api/search", tags=["Search Engine"], summary="Indexed curriculum, DAG & question search")
+def search_post(payload: SearchQueryIn):
+    results = search_engine.search(
+        query=payload.query,
+        entity_type=payload.entity_type,
+        chapter_id=payload.chapter_id,
+        limit=payload.limit,
+    )
+    return {
+        "query": payload.query,
+        "total_results": len(results),
+        "results": [
+            {
+                "id": r.id,
+                "type": r.type,
+                "title": r.title,
+                "snippet": r.snippet,
+                "relevance_score": r.relevance_score,
+                "chapter_id": r.chapter_id,
+                "concept_id": r.concept_id,
+                "tags": r.tags,
+                "metadata": r.metadata,
+            }
+            for r in results
+        ],
+    }
+
+@app.get("/api/search", tags=["Search Engine"], summary="Quick query search with filters")
+def search_get(q: str = "", entity_type: str = "all", chapter_id: str = "all", limit: int = 15):
+    results = search_engine.search(query=q, entity_type=entity_type, chapter_id=chapter_id, limit=limit)
+    return {
+        "query": q,
+        "total_results": len(results),
+        "results": [
+            {
+                "id": r.id,
+                "type": r.type,
+                "title": r.title,
+                "snippet": r.snippet,
+                "relevance_score": r.relevance_score,
+                "chapter_id": r.chapter_id,
+                "concept_id": r.concept_id,
+                "tags": r.tags,
+                "metadata": r.metadata,
+            }
+            for r in results
+        ],
+    }
+
+@app.get("/api/search/suggestions", tags=["Search Engine"], summary="Autocomplete suggestions")
+def search_suggestions(q: str = ""):
+    return {"suggestions": search_engine.get_suggestions(prefix=q)}
+
+# ----------------------------------------------------
+# 2. PRISM Answer Engine API
+# ----------------------------------------------------
+@app.post("/api/answer", tags=["Answer Engine"], summary="Pedagogical NCERT step-by-step problem solver")
+def answer_post(payload: AnswerQueryIn):
+    result = answer_engine.solve(query=payload.query, concept_id=payload.concept_id)
+    return {
+        "query": result.query,
+        "category": result.category,
+        "direct_answer": result.direct_answer,
+        "confidence": result.confidence,
+        "steps": result.steps,
+        "verification": result.verification,
+        "misconception_warning": result.misconception_warning,
+        "prerequisites": result.prerequisites,
+        "practice_challenge": result.practice_challenge,
+        "source": result.source,
+    }
+
+@app.get("/api/answer", tags=["Answer Engine"], summary="Get step-by-step pedagogical answer for a query")
+def answer_get(q: str = "", concept_id: str = ""):
+    result = answer_engine.solve(query=q, concept_id=concept_id if concept_id else None)
+    return {
+        "query": result.query,
+        "category": result.category,
+        "direct_answer": result.direct_answer,
+        "confidence": result.confidence,
+        "steps": result.steps,
+        "verification": result.verification,
+        "misconception_warning": result.misconception_warning,
+        "prerequisites": result.prerequisites,
+        "practice_challenge": result.practice_challenge,
+        "source": result.source,
+    }
+
+# ----------------------------------------------------
+# 3. PRISM Generative Engine API
+# ----------------------------------------------------
+@app.post("/api/generate/question", tags=["Generative Engine"], summary="Generate practice/diagnostic question with tagged misconception distractors")
+def generate_question_endpoint(payload: GenerateQuestionIn):
+    question = generative_engine.generate_question(
+        concept_id=payload.concept_id,
+        stage=payload.stage,
+        difficulty=payload.difficulty,
+    )
+    return question
+
+@app.post("/api/generate/remediation", tags=["Generative Engine"], summary="Generate personalized remediation guide for student misconception")
+def generate_remediation_endpoint(payload: GenerateRemediationIn):
+    guide = generative_engine.generate_remediation(
+        misconception_id=payload.misconception_id,
+        student_name=payload.student_name,
+        grade=payload.grade,
+    )
+    return guide
+
+@app.post("/api/generate/lesson-plan", tags=["Generative Engine"], summary="Generate 45-min differentiated classroom plan for teacher pods")
+def generate_lesson_plan_endpoint(payload: GenerateLessonPlanIn):
+    plan = generative_engine.generate_lesson_plan(
+        concept_id=payload.concept_id,
+        classroom_code=payload.classroom_code,
+    )
+    return plan
+
+@app.post("/api/generate/transfer-task", tags=["Generative Engine"], summary="Generate authentic Indian real-world transfer problem")
+def generate_transfer_task_endpoint(payload: GenerateTransferIn):
+    task = generative_engine.generate_transfer_task(
+        concept_id=payload.concept_id,
+        theme=payload.theme,
+    )
+    return task
+
 # ----------------------------------------------------
 # Production SPA Static File Serving
 # Enables 1-Click All-in-One Deployment (Frontend + Backend on single port)
+# Path resolution order:
+#   1. /app/frontend/dist  (Docker container layout)
+#   2. ../../frontend/dist (local dev: running from backend/app)
+#   3. frontend/dist        (local dev: running from project root)
 # ----------------------------------------------------
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
-if not os.path.isdir(frontend_dist):
-    frontend_dist = os.path.abspath(os.path.join(os.getcwd(), "frontend", "dist"))
+def _find_frontend_dist() -> str | None:
+    candidates = [
+        "/app/frontend/dist",                                           # Docker
+        os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist")),  # from backend/app/
+        os.path.abspath(os.path.join(os.getcwd(), "frontend", "dist")),  # from project root
+    ]
+    for path in candidates:
+        if os.path.isdir(path):
+            return path
+    return None
 
-if os.path.isdir(frontend_dist):
+frontend_dist = _find_frontend_dist()
+
+if frontend_dist:
     assets_dir = os.path.join(frontend_dist, "assets")
     if os.path.isdir(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")

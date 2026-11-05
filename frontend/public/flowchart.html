@@ -1,0 +1,384 @@
+<!-- Copied for frontend/public distribution -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PRISM Classroom — Project Flowchart & End-to-End Architecture</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: #151d30;
+      --border: #24304e;
+      --text: #f0f4fc;
+      --text-muted: #8d9bb5;
+      --primary: #7c3aed;
+      --teal: #0d9488;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --blue: #3b82f6;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    body { background: var(--bg); color: var(--text); line-height: 1.5; padding: 24px; min-height: 100vh; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+    .brand-col { display: flex; align-items: center; gap: 14px; }
+    .logo-badge { width: 44px; height: 44px; background: linear-gradient(135deg, #7c3aed, #4f46e5); border-radius: 12px; display: grid; place-items: center; font-size: 26px; font-weight: 900; color: white; box-shadow: 0 4px 16px rgba(124, 58, 237, 0.4); }
+    h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .subtitle { font-size: 13px; color: var(--text-muted); }
+    .actions { display: flex; gap: 10px; }
+    button { background: var(--card-bg); border: 1px solid var(--border); color: var(--text); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; }
+    button:hover { background: #1c2742; border-color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: white; }
+    button.primary:hover { background: #6d28d9; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .tab-btn { background: transparent; border: none; padding: 8px 16px; border-radius: 6px; color: var(--text-muted); font-size: 14px; cursor: pointer; }
+    .tab-btn.active { background: #1f2942; color: #fff; font-weight: 700; border-bottom: 2px solid var(--primary); }
+    .chart-container { background: #0e1526; border: 1px solid var(--border); border-radius: 14px; padding: 24px; overflow-x: auto; position: relative; box-shadow: inset 0 2px 8px rgba(0,0,0,0.4); }
+    svg { display: block; width: 100%; min-width: 1050px; height: auto; }
+    .inspector-card { margin-top: 24px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px; }
+    .inspector-card h3 { font-size: 16px; color: #fff; margin-bottom: 6px; }
+    .inspector-card p { font-size: 13px; color: var(--text-muted); }
+    .inspector-card .stat-pill { display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-top: 6px; }
+    .pill-purple { background: rgba(124, 58, 237, 0.2); color: #c4b5fd; border: 1px solid rgba(124, 58, 237, 0.4); }
+    .pill-teal { background: rgba(13, 148, 136, 0.2); color: #5eead4; border: 1px solid rgba(13, 148, 136, 0.4); }
+    .pill-green { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.4); }
+    .pill-amber { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; padding: 12px 16px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 8px; }
+    .legend-color { width: 14px; height: 14px; border-radius: 4px; }
+    @media print {
+      body { background: white; color: black; padding: 0; }
+      .actions, .tabs { display: none; }
+      .chart-container { border: none; box-shadow: none; }
+      svg text { fill: #000 !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="brand-col">
+      <div class="logo-badge">P</div>
+      <div>
+        <h1>PRISM CLASSROOM — OFFICIAL PROJECT FLOWCHART</h1>
+        <p class="subtitle">Complete Data Lifecycle, Diagnostic Inference Engine & Teacher Intervention Compiler · Code Kernel '26</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button onclick="window.print()">🖨️ Print / Save PDF</button>
+      <button class="primary" onclick="window.location.href='/'">🚀 Launch Live Website</button>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchView('full-flowchart')">1. End-to-End System Flowchart</button>
+    <button class="tab-btn" onclick="switchView('dag-view')">2. Prerequisite Concept DAG</button>
+    <button class="tab-btn" onclick="switchView('rubric-model')">3. Rubric & Misconception Math</button>
+    <button class="tab-btn" onclick="switchView('schema-erd')">4. Database Schema (9 Tables)</button>
+  </div>
+
+  <div id="full-flowchart" class="view-panel">
+    <div class="chart-container">
+      <svg viewBox="0 0 1150 900" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="grad-student" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#4f46e5" />
+            <stop offset="100%" stop-color="#7c3aed" />
+          </linearGradient>
+          <linearGradient id="grad-engine" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#0f766e" />
+            <stop offset="100%" stop-color="#0d9488" />
+          </linearGradient>
+          <linearGradient id="grad-teacher" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#92400e" />
+            <stop offset="100%" stop-color="#d97706" />
+          </linearGradient>
+          <linearGradient id="grad-db" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#1e293b" />
+            <stop offset="100%" stop-color="#334155" />
+          </linearGradient>
+          <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.4" />
+          </filter>
+          <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 8 5 L 0 9 z" fill="#8d9bb5" />
+          </marker>
+          <marker id="arrow-purple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 8 5 L 0 9 z" fill="#a78bfa" />
+          </marker>
+          <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 8 5 L 0 9 z" fill="#34d399" />
+          </marker>
+        </defs>
+
+        <!-- SWIMLANES -->
+        <!-- Lane 1: Student Client -->
+        <rect x="20" y="20" width="1110" height="150" rx="10" fill="#131b2e" stroke="#223254" stroke-width="1.5" />
+        <text x="35" y="45" fill="#818cf8" font-size="12" font-weight="800" letter-spacing="1">PHASE 1: CLIENT PRESENTATION & EVIDENCE GATHERING (REACT + TYPESCRIPT + OFFLINE QUEUE)</text>
+
+        <!-- Lane 2: API Gateway & Persistence -->
+        <rect x="20" y="190" width="1110" height="170" rx="10" fill="#131b2e" stroke="#223254" stroke-width="1.5" />
+        <text x="35" y="215" fill="#5eead4" font-size="12" font-weight="800" letter-spacing="1">PHASE 2: API GATEWAY & SECURE PERSISTENCE (FASTAPI + SQLITE 9 NORMALIZED TABLES)</text>
+
+        <!-- Lane 3: Deterministic Rules Engine -->
+        <rect x="20" y="380" width="1110" height="230" rx="10" fill="#131b2e" stroke="#223254" stroke-width="1.5" />
+        <text x="35" y="405" fill="#f472b6" font-size="12" font-weight="800" letter-spacing="1">PHASE 3: DETERMINISTIC RULES ENGINE (TOPOLOGICAL DAG + PATTERN CLASSIFIER + RUBRIC EMA)</text>
+
+        <!-- Lane 4: Teacher Intervention Compiler -->
+        <rect x="20" y="630" width="1110" height="240" rx="10" fill="#131b2e" stroke="#223254" stroke-width="1.5" />
+        <text x="35" y="655" fill="#fbbf24" font-size="12" font-weight="800" letter-spacing="1">PHASE 4: TEACHER INTERVENTION COMPILER & DECISION CONTROLS (PODS + TIMELINE + CBSE EXPORT)</text>
+
+        <!-- LANE 1 NODES -->
+        <rect x="50" y="65" width="180" height="80" rx="8" fill="url(#grad-student)" filter="url(#glow)" />
+        <text x="140" y="95" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle">Student Interaction</text>
+        <text x="140" y="115" fill="#e0e7ff" font-size="11" text-anchor="middle">Diagnostic / Practice / Test</text>
+        <text x="140" y="130" fill="#c7d2fe" font-size="9" text-anchor="middle">Enrolls via Teacher Class Code</text>
+
+        <rect x="290" y="65" width="190" height="80" rx="8" fill="#1e293b" stroke="#3b82f6" stroke-width="1.5" />
+        <text x="385" y="95" fill="#93c5fd" font-size="13" font-weight="bold" text-anchor="middle">Client-Side Queue</text>
+        <text x="385" y="115" fill="#94a3b8" font-size="11" text-anchor="middle">UUID Generation & Offline</text>
+        <text x="385" y="130" fill="#64748b" font-size="9" text-anchor="middle">localStorage Idempotent Buffer</text>
+
+        <rect x="540" y="65" width="220" height="80" rx="8" fill="#1e293b" stroke="#8b5cf6" stroke-width="1.5" />
+        <text x="650" y="95" fill="#c4b5fd" font-size="13" font-weight="bold" text-anchor="middle">Interactive Manipulatives</text>
+        <text x="650" y="115" fill="#94a3b8" font-size="11" text-anchor="middle">SVG Bars · Equal Strips · Grids</text>
+        <text x="650" y="130" fill="#64748b" font-size="9" text-anchor="middle">Trilingual: EN / HI (अंश/हर) / TE</text>
+
+        <rect x="820" y="65" width="220" height="80" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="1.5" />
+        <text x="930" y="95" fill="#6ee7b7" font-size="13" font-weight="bold" text-anchor="middle">Instant Transfer Verification</text>
+        <text x="930" y="115" fill="#94a3b8" font-size="11" text-anchor="middle">Unassisted Novel Application</text>
+        <text x="930" y="130" fill="#64748b" font-size="9" text-anchor="middle">Weight 1.4× in Rubric Math</text>
+
+        <!-- LANE 2 NODES -->
+        <rect x="160" y="240" width="230" height="90" rx="8" fill="url(#grad-engine)" filter="url(#glow)" />
+        <text x="275" y="270" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle">FastAPI Gateway Layer</text>
+        <text x="275" y="290" fill="#ccfbf1" font-size="11" text-anchor="middle">POST /api/learning/attempts</text>
+        <text x="275" y="308" fill="#99f6e4" font-size="10" text-anchor="middle">PBKDF2 Hash + JWT Bearer Auth</text>
+
+        <rect x="520" y="240" width="240" height="90" rx="8" fill="url(#grad-db)" stroke="#475569" stroke-width="1.5" />
+        <text x="640" y="270" fill="#f1f5f9" font-size="13" font-weight="bold" text-anchor="middle">Normalized SQLite Database</text>
+        <text x="640" y="290" fill="#94a3b8" font-size="11" text-anchor="middle">9 Tables: users, attempts, progress,</text>
+        <text x="640" y="308" fill="#64748b" font-size="10" text-anchor="middle">interventions, classrooms, questions</text>
+
+        <rect x="840" y="240" width="200" height="90" rx="8" fill="#1e293b" stroke="#0ea5e9" stroke-width="1.5" />
+        <text x="940" y="270" fill="#7dd3fc" font-size="13" font-weight="bold" text-anchor="middle">Idempotent Deduplication</text>
+        <text x="940" y="290" fill="#94a3b8" font-size="11" text-anchor="middle">Unique (student_id, submission_id)</text>
+        <text x="940" y="308" fill="#64748b" font-size="10" text-anchor="middle">Zero Duplicate Grading on Sync</text>
+
+        <!-- LANE 3 NODES -->
+        <rect x="60" y="440" width="220" height="130" rx="8" fill="#1e293b" stroke="#ec4899" stroke-width="1.5" />
+        <text x="170" y="470" fill="#f472b6" font-size="13" font-weight="bold" text-anchor="middle">Prerequisite DAG Check</text>
+        <text x="170" y="495" fill="#cbd5e1" font-size="11" text-anchor="middle">Topological Graph Walk</text>
+        <text x="170" y="515" fill="#94a3b8" font-size="10" text-anchor="middle">fraction-parts → magnitude</text>
+        <text x="170" y="530" fill="#94a3b8" font-size="10" text-anchor="middle">fraction-parts → simplify</text>
+        <text x="170" y="548" fill="#ec4899" font-size="10" font-weight="bold" text-anchor="middle">validate_graph() on startup</text>
+
+        <rect x="330" y="440" width="270" height="130" rx="8" fill="#1e293b" stroke="#a855f7" stroke-width="1.5" />
+        <text x="465" y="470" fill="#d8b4fe" font-size="13" font-weight="bold" text-anchor="middle">Pattern Classification & Safeguards</text>
+        <text x="465" y="495" fill="#cbd5e1" font-size="11" text-anchor="middle">Tags: denominator-magnitude, sign-error</text>
+        <text x="465" y="515" fill="#e9d5ff" font-size="10" text-anchor="middle">🛡️ Safeguard: 1 error NEVER tags</text>
+        <text x="465" y="532" fill="#e9d5ff" font-size="10" text-anchor="middle">Confidence Floor: ≥ 2 errors & ≥ 50%</text>
+        <text x="465" y="550" fill="#c084fc" font-size="10" font-weight="bold" text-anchor="middle">Ambiguous → Teacher Conference</text>
+
+        <rect x="650" y="440" width="250" height="130" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="1.5" />
+        <text x="775" y="470" fill="#6ee7b7" font-size="13" font-weight="bold" text-anchor="middle">Weighted Rubric Mastery Formula</text>
+        <text x="775" y="495" fill="#a7f3d0" font-size="10" font-family="monospace" text-anchor="middle">0.25*M_prev + 0.75*(Σw_i*c_i / Σw_i)</text>
+        <text x="775" y="515" fill="#94a3b8" font-size="10" text-anchor="middle">Clamped: [0.05, 0.95]</text>
+        <text x="775" y="532" fill="#94a3b8" font-size="10" text-anchor="middle">Diagnostic/Practice: w = 1.0</text>
+        <text x="775" y="550" fill="#34d399" font-size="10" font-weight="bold" text-anchor="middle">Transfer Test: w = 1.4 (High Weight)</text>
+
+        <rect x="940" y="440" width="160" height="130" rx="8" fill="#1e293b" stroke="#eab308" stroke-width="1.5" />
+        <text x="1020" y="470" fill="#fde047" font-size="13" font-weight="bold" text-anchor="middle">Learner Route</text>
+        <text x="1020" y="495" fill="#fef08a" font-size="10" text-anchor="middle">• visual-support</text>
+        <text x="1020" y="512" fill="#fef08a" font-size="10" text-anchor="middle">• foundation</text>
+        <text x="1020" y="529" fill="#fef08a" font-size="10" text-anchor="middle">• guided-practice</text>
+        <text x="1020" y="546" fill="#fef08a" font-size="10" text-anchor="middle">• extension</text>
+        <text x="1020" y="563" fill="#fef08a" font-size="10" text-anchor="middle">• follow-up</text>
+
+        <!-- LANE 4 NODES -->
+        <rect x="50" y="700" width="240" height="130" rx="8" fill="url(#grad-teacher)" filter="url(#glow)" />
+        <text x="170" y="730" fill="#fff" font-size="13" font-weight="bold" text-anchor="middle">Teacher Intervention Compiler</text>
+        <text x="170" y="750" fill="#fef3c7" font-size="11" text-anchor="middle">compile_groups(profiles)</text>
+        <text x="170" y="770" fill="#fde68a" font-size="10" text-anchor="middle">Clusters live learner pulses into</text>
+        <text x="170" y="785" fill="#fde68a" font-size="10" text-anchor="middle">4 targeted instructional pods</text>
+        <text x="170" y="805" fill="#fff" font-size="10" font-weight="bold" text-anchor="middle">⚡ Recompile on Live Evidence</text>
+
+        <rect x="330" y="700" width="220" height="130" rx="8" fill="#1e293b" stroke="#f59e0b" stroke-width="1.5" />
+        <text x="440" y="730" fill="#fbbf24" font-size="13" font-weight="bold" text-anchor="middle">4 Small-Group Pods</text>
+        <text x="440" y="755" fill="#cbd5e1" font-size="10" text-anchor="middle">🟣 Visual Pod: 10 min (SVG bars)</text>
+        <text x="440" y="772" fill="#cbd5e1" font-size="10" text-anchor="middle">🟠 Foundation Pod: 12 min (strip fold)</text>
+        <text x="440" y="789" fill="#cbd5e1" font-size="10" text-anchor="middle">🔵 Guided Pod: 12 min (grid scaffold)</text>
+        <text x="440" y="806" fill="#cbd5e1" font-size="10" text-anchor="middle">🟢 Extension Pod: 15 min (kitchen lab)</text>
+
+        <rect x="590" y="700" width="240" height="130" rx="8" fill="#1e293b" stroke="#10b981" stroke-width="1.5" />
+        <text x="710" y="730" fill="#6ee7b7" font-size="13" font-weight="bold" text-anchor="middle">Teacher Control Authority</text>
+        <text x="710" y="755" fill="#d1fae5" font-size="10" text-anchor="middle">✅ Approve Plan with 1 click</text>
+        <text x="710" y="772" fill="#d1fae5" font-size="10" text-anchor="middle">✏️ Modify Duration (5-20m) & Pods</text>
+        <text x="710" y="789" fill="#d1fae5" font-size="10" text-anchor="middle">👥 Reassign Students Across Pods</text>
+        <text x="710" y="806" fill="#d1fae5" font-size="10" text-anchor="middle">❌ Dismiss / Reject Plan</text>
+
+        <rect x="870" y="700" width="240" height="130" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+        <text x="990" y="730" fill="#7dd3fc" font-size="13" font-weight="bold" text-anchor="middle">Export & Classroom Briefing</text>
+        <text x="990" y="755" fill="#bae6fd" font-size="10" text-anchor="middle">📋 45-Minute Lesson Timeline</text>
+        <text x="990" y="772" fill="#bae6fd" font-size="10" text-anchor="middle">🔍 Student Attempt Audit Dossier</text>
+        <text x="990" y="789" fill="#bae6fd" font-size="10" text-anchor="middle">🖨️ Official CBSE Inspection Plan</text>
+        <text x="990" y="806" fill="#38bdf8" font-size="10" font-weight="bold" text-anchor="middle">Printable PDF Compliance</text>
+
+        <!-- CONNECTING ARROWS -->
+        <path d="M 230 105 L 290 105" stroke="#8d9bb5" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 385 145 L 385 190 L 275 190 L 275 240" stroke="#8d9bb5" stroke-width="2" fill="none" marker-end="url(#arrow)" />
+        <path d="M 390 285 L 520 285" stroke="#8d9bb5" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 840 285 L 760 285" stroke="#8d9bb5" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 640 330 L 640 380 L 170 380 L 170 440" stroke="#a78bfa" stroke-width="2" fill="none" marker-end="url(#arrow-purple)" />
+        <path d="M 280 505 L 330 505" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow-purple)" />
+        <path d="M 600 505 L 650 505" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow-purple)" />
+        <path d="M 900 505 L 940 505" stroke="#a78bfa" stroke-width="2" marker-end="url(#arrow-purple)" />
+        <path d="M 1020 440 L 1020 180 L 650 180 L 650 145" stroke="#34d399" stroke-dasharray="5,5" stroke-width="2" fill="none" marker-end="url(#arrow-green)" />
+        <path d="M 1020 570 L 1020 660 L 170 660 L 170 700" stroke="#fbbf24" stroke-width="2" fill="none" marker-end="url(#arrow)" />
+        <path d="M 290 765 L 330 765" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 550 765 L 590 765" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 830 765 L 870 765" stroke="#fbbf24" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 710 830 L 710 860 L 40 860 L 40 105 L 50 105" stroke="#38bdf8" stroke-dasharray="6,4" stroke-width="2" fill="none" marker-end="url(#arrow)" />
+      </svg>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item"><div class="legend-color" style="background:#7c3aed;"></div> Phase 1: Client Learning & Ingestion</div>
+      <div class="legend-item"><div class="legend-color" style="background:#0d9488;"></div> Phase 2: Gateway & Persistence</div>
+      <div class="legend-item"><div class="legend-color" style="background:#db2777;"></div> Phase 3: Deterministic Rules Engine</div>
+      <div class="legend-item"><div class="legend-color" style="background:#d97706;"></div> Phase 4: Teacher Intervention Compiler</div>
+      <div class="legend-item"><div class="legend-color" style="background:#10b981;"></div> Green Dashed: Adaptive Manipulative Loop</div>
+      <div class="legend-item"><div class="legend-color" style="background:#38bdf8;"></div> Blue Dashed: Teacher Decision Closed Loop</div>
+    </div>
+
+    <div class="inspector-card">
+      <div>
+        <h3>1. Evidence Gathering</h3>
+        <p>Short diagnostic probes classify latent barriers. UUID deduplication in localStorage guarantees zero dropped attempts in spotty connectivity.</p>
+        <span class="stat-pill pill-purple">Client UUID Deduplication</span>
+      </div>
+      <div>
+        <h3>2. Deterministic Inference Core</h3>
+        <p>Zero AI hallucinations. Prerequisite DAG walk prevents progressing past unmastered foundations. 2-error threshold safeguards against false-positive misconception labeling.</p>
+        <span class="stat-pill pill-teal">Mastery EMA = 0.25*M + 0.75*(Σw_i*c_i / Σw_i)</span>
+      </div>
+      <div>
+        <h3>3. Teacher In The Loop</h3>
+        <p>Aggregates pulses into 4 pods. The teacher retains 100% authority to approve, re-allocate durations (5–20m), or export official CBSE inspection briefings.</p>
+        <span class="stat-pill pill-amber">One-Click CBSE PDF Export</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="dag-view" class="view-panel" style="display:none;">
+    <div class="chart-container">
+      <svg viewBox="0 0 900 450" xmlns="http://www.w3.org/2000/svg">
+        <rect x="50" y="160" width="220" height="100" rx="10" fill="#1e293b" stroke="#7c3aed" stroke-width="2" />
+        <text x="160" y="195" fill="#c4b5fd" font-size="14" font-weight="bold" text-anchor="middle">fraction-parts</text>
+        <text x="160" y="215" fill="#94a3b8" font-size="11" text-anchor="middle">Root Prerequisite</text>
+        <text x="160" y="235" fill="#cbd5e1" font-size="10" text-anchor="middle">Numerator, Denominator & Equal Parts</text>
+
+        <rect x="360" y="60" width="230" height="100" rx="10" fill="#1e293b" stroke="#0d9488" stroke-width="2" />
+        <text x="475" y="95" fill="#5eead4" font-size="14" font-weight="bold" text-anchor="middle">fraction-magnitude</text>
+        <text x="475" y="115" fill="#94a3b8" font-size="11" text-anchor="middle">Comparison of Fractions</text>
+        <text x="475" y="135" fill="#cbd5e1" font-size="10" text-anchor="middle">Equal wholes, piece size reasoning</text>
+
+        <rect x="360" y="260" width="230" height="100" rx="10" fill="#1e293b" stroke="#0ea5e9" stroke-width="2" />
+        <text x="475" y="295" fill="#7dd3fc" font-size="14" font-weight="bold" text-anchor="middle">simplification</text>
+        <text x="475" y="315" fill="#94a3b8" font-size="11" text-anchor="middle">Standard Form Reduction</text>
+        <text x="475" y="335" fill="#cbd5e1" font-size="10" text-anchor="middle">Common factor division & sign preservation</text>
+
+        <rect x="670" y="160" width="210" height="100" rx="10" fill="#1e293b" stroke="#10b981" stroke-width="2" />
+        <text x="775" y="195" fill="#6ee7b7" font-size="14" font-weight="bold" text-anchor="middle">equivalent-fractions</text>
+        <text x="775" y="215" fill="#94a3b8" font-size="11" text-anchor="middle">Target NCERT Concept</text>
+        <text x="775" y="235" fill="#cbd5e1" font-size="10" text-anchor="middle">Multiplier balance (a*k)/(b*k)</text>
+
+        <path d="M 270 190 L 360 120" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 270 230 L 360 290" stroke="#7c3aed" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 590 120 L 670 190" stroke="#0d9488" stroke-width="2" marker-end="url(#arrow)" />
+        <path d="M 590 290 L 670 230" stroke="#0ea5e9" stroke-width="2" marker-end="url(#arrow)" />
+      </svg>
+    </div>
+  </div>
+
+  <div id="rubric-model" class="view-panel" style="display:none;">
+    <div class="chart-container" style="color: #cbd5e1; font-size: 14px; line-height: 1.8;">
+      <h2 style="color: #fff; margin-bottom: 12px;">Deterministic Rubric Scoring & Pedagogical Safeguards</h2>
+      <p>PRISM replaces black-box probabilistic models with a deterministic, mathematically verifiable rubric model:</p>
+      
+      <div style="background: #1e293b; padding: 18px; border-radius: 8px; margin: 16px 0; border-left: 4px solid var(--primary); font-family: monospace; font-size: 15px; color: #a78bfa;">
+        Mastery = round(clamp(0.05, 0.95, 0.25 * M_prev + 0.75 * (Σ w_i · c_i / Σ w_i)), 2)
+      </div>
+
+      <ul style="margin-left: 20px; margin-bottom: 16px;">
+        <li><b>w_i = 1.0:</b> Standard diagnostic and scaffolded practice items.</li>
+        <li><b>w_i = 1.4:</b> Independent transfer verification questions (40% greater evidentiary weight).</li>
+        <li><b>c_i ∈ {0, 1}:</b> Exact correctness indicator.</li>
+        <li><b>Bounded:</b> Constrained strictly within [0.05, 0.95] to prevent over-confidence or irrecoverable zero-scores.</li>
+      </ul>
+
+      <h3 style="color: #fff; margin: 16px 0 8px;">Pedagogical Safeguard Rules</h3>
+      <ol style="margin-left: 20px;">
+        <li><b>Single-Error Protection:</b> An isolated error NEVER assigns a misconception label. Requires at least 2 matching tagged errors.</li>
+        <li><b>Confidence Floor:</b> Misconception confidence must be ≥ 50% relative to total errors before visual intervention is prescribed.</li>
+        <li><b>Teacher Review Fallback:</b> Contradictory evidence (e.g. 1 error in concept A, 1 in concept B) routes learner to "follow-up" (Teacher Conference Pod).</li>
+      </ol>
+    </div>
+  </div>
+
+  <div id="schema-erd" class="view-panel" style="display:none;">
+    <div class="chart-container">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px;">
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #a78bfa;">users</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), email, name, role, password_salt, password_hash, student_code, teacher_id</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #5eead4;">classrooms</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), code (UNIQUE INDEX), grade, curriculum</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #6ee7b7;">students</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), code (UNIQUE), grade, language, classroom_id (FK)</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #fcd34d;">teachers</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), demo_identity (UNIQUE), name, classroom_id (FK)</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #f472b6;">questions</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), concept_id, stage, difficulty, prompt, options, expected_answer, misconception_map, is_transfer</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #38bdf8;">attempts</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), student_id (FK), question_id (FK), submission_id (UNIQUE INDEX), response, correct, stage, created_at</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #a78bfa;">learner_progress</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), student_id, concept_id, mastery, evidence_count, misconception, recommendation</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #fbbf24;">interventions</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), classroom_id, group_key, student_ids, barrier, activity, duration, outcome, status, teacher_notes</p>
+        </div>
+        <div style="background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+          <h4 style="color: #cbd5e1;">concepts</h4>
+          <p style="font-size: 12px; color: #94a3b8;">id (PK), name, objective, grade, prerequisites (JSON)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function switchView(viewId) {
+      document.querySelectorAll('.view-panel').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(viewId).style.display = 'block';
+      event.target.classList.add('active');
+    }
+  </script>
+
+</body>
+</html>
+

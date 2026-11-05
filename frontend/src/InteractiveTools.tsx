@@ -49,41 +49,77 @@ export function VisualFractionBarWorkbench({ lang }: Props) {
         <div className="fraction-strip-block">
           <div className="strip-controls">
             <span className="fraction-label">
-              Fraction A: <b>{f1Num}/{f1Den}</b> ({(val1 * 100).toFixed(1)}%)
+              {lang === 'hi' ? 'भिन्न A' : lang === 'te' ? 'భిన్నం A' : 'Fraction A'}: <b>{f1Num}/{f1Den}</b> ({(val1 * 100).toFixed(1)}%)
             </span>
             <div className="button-group">
-              <label>Numerator:
-                <select value={f1Num} onChange={(e) => setF1Num(Number(e.target.value))}>
-                  {[1, 2, 3, 4, 5, 6].map((n) => (
-                    <option key={n} value={n} disabled={n > f1Den}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>Denominator:
-                <select value={f1Den} onChange={(e) => {
-                  const d = Number(e.target.value);
-                  setF1Den(d);
-                  if (f1Num > d) setF1Num(d);
-                }}>
-                  {[2, 3, 4, 5, 6, 8, 10, 12].map((d) => (
-                    <option key={d} value={d}>{d} parts</option>
-                  ))}
-                </select>
-              </label>
+              <div className="counter-control" title={lang === 'hi' ? 'अंश बदलें' : lang === 'te' ? 'లవం మార్చండి' : 'Change numerator'}>
+                <span className="ctrl-label">{lang === 'hi' ? 'अंश:' : lang === 'te' ? 'లవం:' : 'Num:'}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => setF1Num(Math.max(1, f1Num - 1))}
+                  disabled={f1Num <= 1}
+                >
+                  −
+                </button>
+                <span className="counter-val">{f1Num}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => setF1Num(Math.min(f1Den, f1Num + 1))}
+                  disabled={f1Num >= f1Den}
+                >
+                  +
+                </button>
+              </div>
+
+              <div className="counter-control" title={lang === 'hi' ? 'हर (कुल भाग) बदलें' : lang === 'te' ? 'హారం (మొత్తం భాగాలు) మార్చండి' : 'Change denominator (total parts)'}>
+                <span className="ctrl-label">{lang === 'hi' ? 'हर:' : lang === 'te' ? 'హారం:' : 'Den:'}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => {
+                    const nextD = Math.max(2, f1Den - 1);
+                    setF1Den(nextD);
+                    if (f1Num > nextD) setF1Num(nextD);
+                  }}
+                  disabled={f1Den <= 2}
+                >
+                  −
+                </button>
+                <span className="counter-val">{f1Den}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => setF1Den(Math.min(12, f1Den + 1))}
+                  disabled={f1Den >= 12}
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="visual-strip" title={`${f1Num} of ${f1Den} equal parts`}>
+          <div className="interactive-strip-hint">
+            {lang === 'hi'
+              ? '👆 शेड बदलने के लिए किसी भी टुकड़े पर क्लिक करें:'
+              : lang === 'te'
+              ? '👆 షేడ్ చేయడానికి పట్టీలోని ఏదైనా భాగాన్ని క్లిక్ చేయండి:'
+              : '👆 Click any slice on the bar to shade / unshade:'}
+          </div>
+
+          <div className="visual-strip interactive" role="group" aria-label="Fraction A Interactive Bar">
             {Array.from({ length: f1Den }).map((_, i) => (
-              <div
+              <button
+                type="button"
                 key={i}
-                className={`strip-slice ${i < f1Num ? 'shaded purple' : 'unshaded'}`}
+                className={`strip-slice interactive ${i < f1Num ? 'shaded purple' : 'unshaded'}`}
                 style={{ width: `${100 / f1Den}%` }}
+                onClick={() => setF1Num(i + 1 === f1Num ? i : i + 1)}
+                title={`${lang === 'hi' ? 'भाग' : lang === 'te' ? 'భాగం' : 'Part'} ${i + 1}/${f1Den} — ${lang === 'hi' ? 'शेड करने के लिए क्लिक करें' : lang === 'te' ? 'షేడ్ చేయడానికి క్లిక్ చేయండి' : 'Click to shade'}`}
               >
                 1/{f1Den}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -92,41 +128,77 @@ export function VisualFractionBarWorkbench({ lang }: Props) {
         <div className="fraction-strip-block">
           <div className="strip-controls">
             <span className="fraction-label">
-              Fraction B: <b>{f2Num}/{f2Den}</b> ({(val2 * 100).toFixed(1)}%)
+              {lang === 'hi' ? 'भिन्न B' : lang === 'te' ? 'భిన్నం B' : 'Fraction B'}: <b>{f2Num}/{f2Den}</b> ({(val2 * 100).toFixed(1)}%)
             </span>
             <div className="button-group">
-              <label>Numerator:
-                <select value={f2Num} onChange={(e) => setF2Num(Number(e.target.value))}>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-                    <option key={n} value={n} disabled={n > f2Den}>
-                      {n}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>Denominator:
-                <select value={f2Den} onChange={(e) => {
-                  const d = Number(e.target.value);
-                  setF2Den(d);
-                  if (f2Num > d) setF2Num(d);
-                }}>
-                  {[2, 3, 4, 5, 6, 8, 10, 12].map((d) => (
-                    <option key={d} value={d}>{d} parts</option>
-                  ))}
-                </select>
-              </label>
+              <div className="counter-control" title={lang === 'hi' ? 'अंश बदलें' : lang === 'te' ? 'లవం మార్చండి' : 'Change numerator'}>
+                <span className="ctrl-label">{lang === 'hi' ? 'अंश:' : lang === 'te' ? 'లవం:' : 'Num:'}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => setF2Num(Math.max(1, f2Num - 1))}
+                  disabled={f2Num <= 1}
+                >
+                  −
+                </button>
+                <span className="counter-val">{f2Num}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => setF2Num(Math.min(f2Den, f2Num + 1))}
+                  disabled={f2Num >= f2Den}
+                >
+                  +
+                </button>
+              </div>
+
+              <div className="counter-control" title={lang === 'hi' ? 'हर (कुल भाग) बदलें' : lang === 'te' ? 'హారం (మొత్తం భాగాలు) మార్చండి' : 'Change denominator (total parts)'}>
+                <span className="ctrl-label">{lang === 'hi' ? 'हर:' : lang === 'te' ? 'హారం:' : 'Den:'}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => {
+                    const nextD = Math.max(2, f2Den - 1);
+                    setF2Den(nextD);
+                    if (f2Num > nextD) setF2Num(nextD);
+                  }}
+                  disabled={f2Den <= 2}
+                >
+                  −
+                </button>
+                <span className="counter-val">{f2Den}</span>
+                <button
+                  type="button"
+                  className="btn-counter"
+                  onClick={() => setF2Den(Math.min(12, f2Den + 1))}
+                  disabled={f2Den >= 12}
+                >
+                  +
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="visual-strip" title={`${f2Num} of ${f2Den} equal parts`}>
+          <div className="interactive-strip-hint">
+            {lang === 'hi'
+              ? '👆 शेड बदलने के लिए किसी भी टुकड़े पर क्लिक करें:'
+              : lang === 'te'
+              ? '👆 షేడ్ చేయడానికి పట్టీలోని ఏదైనా భాగాన్ని క్లిక్ చేయండి:'
+              : '👆 Click any slice on the bar to shade / unshade:'}
+          </div>
+
+          <div className="visual-strip interactive" role="group" aria-label="Fraction B Interactive Bar">
             {Array.from({ length: f2Den }).map((_, i) => (
-              <div
+              <button
+                type="button"
                 key={i}
-                className={`strip-slice ${i < f2Num ? 'shaded teal' : 'unshaded'}`}
+                className={`strip-slice interactive ${i < f2Num ? 'shaded teal' : 'unshaded'}`}
                 style={{ width: `${100 / f2Den}%` }}
+                onClick={() => setF2Num(i + 1 === f2Num ? i : i + 1)}
+                title={`${lang === 'hi' ? 'भाग' : lang === 'te' ? 'భాగం' : 'Part'} ${i + 1}/${f2Den} — ${lang === 'hi' ? 'शेड करने के लिए क्लिक करें' : lang === 'te' ? 'షేడ్ చేయడానికి క్లిక్ చేయండి' : 'Click to shade'}`}
               >
                 1/{f2Den}
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -188,7 +260,7 @@ export function VisualFractionBarWorkbench({ lang }: Props) {
             setF1Num(1); setF1Den(3); setF2Num(1); setF2Den(8);
           }}
         >
-          Compare 1/3 vs 1/8
+          {lang === 'hi' ? 'तुलना: 1/3 बनाम 1/8' : lang === 'te' ? 'పోలిక: 1/3 vs 1/8' : 'Compare 1/3 vs 1/8'}
         </button>
         <button
           type="button"
@@ -196,7 +268,7 @@ export function VisualFractionBarWorkbench({ lang }: Props) {
             setF1Num(1); setF1Den(2); setF2Num(2); setF2Den(4);
           }}
         >
-          Equivalence 1/2 = 2/4
+          {lang === 'hi' ? 'तुल्यता: 1/2 = 2/4' : lang === 'te' ? 'సమానత: 1/2 = 2/4' : 'Equivalence 1/2 = 2/4'}
         </button>
         <button
           type="button"
@@ -204,7 +276,7 @@ export function VisualFractionBarWorkbench({ lang }: Props) {
             setF1Num(2); setF1Den(3); setF2Num(4); setF2Den(6);
           }}
         >
-          Equivalence 2/3 = 4/6
+          {lang === 'hi' ? 'तुल्यता: 2/3 = 4/6' : lang === 'te' ? 'సమానత: 2/3 = 4/6' : 'Equivalence 2/3 = 4/6'}
         </button>
       </div>
     </div>

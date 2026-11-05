@@ -1,0 +1,79 @@
+# PRISM Classroom — Full System Specification & Knowledge Graph (GEO Reference)
+**Title:** PRISM Classroom — Misconception-Aware Adaptive Learning Copilot
+**Target Domain:** Indian Secondary Education (CBSE / State Boards, Classes 6–10)
+**Curriculum Reference:** NCERT Mathematics Class VIII · Chapter 1: Rational Numbers
+**Competition Track:** EdTech / Adaptive Learning · Code Kernel '26
+
+---
+
+## 1. Problem Definition in Indian Classrooms
+Indian secondary classrooms face severe structural constraints:
+1. Class size: 45 to 60 students per section under a single subject educator.
+2. Heterogeneous prerequisites: Students enter Class 8 with variable foundational gaps from primary grades.
+3. Lagging diagnostics: Summative chapter tests reveal gaps 2–3 weeks after instruction has moved forward.
+4. Conventional EdTech failure mode: Pure student-facing AI chatbots isolate learners, exhibit LLM hallucinations in mathematical reasoning, and disenfranchise the classroom teacher.
+
+---
+
+## 2. PRISM's Core Innovations
+1. **Teacher Intervention Compiler (`compile_groups`):**
+   Aggregates granular attempt evidence pulses into 4 differentiated small-group instruction pods:
+   - Visual Support Pod (10 min): Side-by-side SVG fraction bar comparator proving piece width decreases as denominator grows.
+   - Foundation Pod (12 min): Virtual strip folding showing equal-part fractional wholes.
+   - Guided Practice Pod (12 min): Scaffolded multiplier grid enforcing (a*k)/(b*k).
+   - Extension Pod (15 min): Real-world NCERT applied recipe scaling in non-standard units.
+2. **Deterministic Rules Engine (`engine.py`):**
+   - Zero hallucinations: All pedagogical decisions are generated from validated rubric formulas and DAG walks.
+   - Single-error safeguard: An isolated incorrect response never tags a student with a permanent misconception label.
+   - Minimum threshold: Requires at least 2 matching errors and >= 50% pattern concentration.
+   - Teacher Review Fallback: Ambiguous or mixed response patterns route the student to a teacher conference.
+3. **Mathematical Model:**
+   Mastery score is computed via a bounded EMA formula:
+   `Mastery = round(clamp(0.05, 0.95, 0.25 * M_prev + 0.75 * (sum(w_i * c_i) / sum(w_i))), 2)`
+   Where w_i = 1.0 for diagnostic and practice items, and w_i = 1.4 for transfer test items.
+4. **Trilingual NCERT Alignment:**
+   Full native support for English, Hindi (हिंदी: अंश, हर, तुल्य परिमेय संख्या), and Telugu (తెలుగు: లవం, హారం, సమతుల్య అకరణీయ సంఖ్యలు).
+5. **Offline Reliability:**
+   Built-in offline queueing via localStorage with UUID deduplication for low-connectivity rural school deployments.
+
+---
+
+## 3. Data Schema & Entities
+1. `classrooms`: id, code (unique index), grade, curriculum.
+2. `teachers`: id, demo_identity, name, classroom_id.
+3. `users`: id, email, name, role, password_salt, password_hash (PBKDF2), student_code, teacher_id.
+4. `students`: id, code (unique index), grade, language, classroom_id.
+5. `concepts`: id, name, objective, grade, prerequisites (JSON array).
+6. `questions`: id, concept_id, stage (diagnostic|practice|test), difficulty, prompt, question_type, options, expected_answer, explanation, misconception_map, is_transfer.
+7. `attempts`: id, student_id, question_id, submission_id (unique UUID), response, correct, stage, created_at.
+8. `learner_progress`: id, student_id, concept_id, mastery, evidence_count, misconception, misconception_confidence, prerequisite_status, recommendation.
+9. `interventions`: id, classroom_id, concept_id, group_key, student_ids, barrier, evidence, confidence, activity, duration, outcome, follow_up, status, teacher_notes.
+
+---
+
+## 4. REST API Endpoints
+- `GET /api/health` — Service health probe.
+- `POST /api/auth/login` — Authenticates credentials; returns JWT token.
+- `POST /api/auth/register` — Creates user account with optional classroom_code.
+- `GET /api/auth/me` — Current session identity.
+- `GET /api/curriculum` — CBSE Class VIII curriculum specification.
+- `GET /api/learning/units` — 8 active CBSE mathematics learning units.
+- `GET /api/learning/my-progress` — Progress across all units for authenticated student.
+- `GET /api/learning/units/{id}/questions?stage={stage}` — Stage questions.
+- `POST /api/learning/attempts` — Submits student attempt with client-side UUID deduplication.
+- `POST /api/students/join-classroom` — Enrolls student into a teacher's classroom by code.
+- `GET /api/teacher/workspace` — Full teacher dashboard data.
+- `GET /api/teacher/students/{code}/detail` — Individual learner historical attempt audit dossier.
+- `GET /api/teacher/interventions` — Compiled small-group pods.
+- `PUT /api/teacher/interventions/{id}` — Teacher overrides, edits time, modifies assigned students.
+- `POST /api/teacher/interventions/recompile` — Recompiles pods from live student attempt evidence.
+- `GET /api/demo/personas` — 4 student archetypes and lead teacher persona metadata.
+- `POST /api/demo/reset` — Resets database to pristine initial state.
+
+---
+
+## 5. Verification & Testing
+- Pytest Suite: 18 unit and integration tests passing in < 1 second.
+- Vitest Suite: Frontend authentication and render tests passing.
+- TypeScript: Zero compiler warnings or errors (`tsc --noEmit`).
+
