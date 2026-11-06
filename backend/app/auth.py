@@ -13,11 +13,42 @@ import json
 import os
 import secrets
 import time
+import warnings
 
 from fastapi import HTTPException, status
 
 TOKEN_TTL_SECONDS = 60 * 60 * 8
-_SECRET = os.getenv("PRISM_AUTH_SECRET", "change-this-prism-development-secret").encode()
+
+_DEV_SECRET = "change-this-prism-development-secret"
+
+
+def _load_secret() -> bytes:
+    """Resolve the token signing secret, refusing the published fallback in production.
+
+    The development secret is committed to this repository, so a deployment that
+    signs real teacher tokens with it can be impersonated by anyone who reads the
+    source. Outside demo mode a real secret is therefore required to boot.
+    """
+    from .config import demo_mode
+
+    configured = os.getenv("PRISM_AUTH_SECRET", "").strip()
+    if configured:
+        return configured.encode()
+    if not demo_mode():
+        raise RuntimeError(
+            "PRISM_AUTH_SECRET must be set when PRISM_DEMO_MODE=0. Generate one with "
+            "`python -c \"import secrets; print(secrets.token_urlsafe(48))\"`."
+        )
+    warnings.warn(
+        "PRISM_AUTH_SECRET is unset; using the public development secret. "
+        "This is safe for the local demo only.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
+    return _DEV_SECRET.encode()
+
+
+_SECRET = _load_secret()
 
 
 def hash_password(password: str, salt: str | None = None) -> tuple[str, str]:

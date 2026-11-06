@@ -29,6 +29,19 @@ services:
       - key: PORT
         value: "8000"
 
+      # Signing secret for bearer tokens. Render generates a strong random
+      # value on first deploy; never fall back to the development secret
+      # committed in this repository.
+      - key: PRISM_AUTH_SECRET
+        generateValue: true
+
+      # Demo mode keeps the public persona endpoints, the X-Demo-Teacher
+      # header and POST /api/demo/reset available for judging. Set this to
+      # "0" before any deployment holding real learner data -- doing so also
+      # makes PRISM_AUTH_SECRET mandatory at boot.
+      - key: PRISM_DEMO_MODE
+        value: "1"
+
       # Optional: add your Gemini API key to enable the LLM fallback
       # in the Answer Engine. Leave empty to use the deterministic solver.
       - key: GEMINI_API_KEY
@@ -37,6 +50,9 @@ services:
       # Set the allowed CORS origins for your deployed frontend.
       # If using the unified container (default), leave this empty —
       # the React SPA is served from the same origin as the API.
-      # If you deploy the frontend separately, add its URL here.
+      # If you deploy the frontend separately, add its exact URL here
+      # (comma-separated). CORS_ORIGIN_REGEX exists for pattern matching but
+      # should name your own subdomain, never a whole shared host such as
+      # *.onrender.com.
       - key: CORS_ORIGINS
         value: ""

@@ -27,6 +27,7 @@ from .generative_engine import generative_engine
 from .curriculum import CBSE_CURRICULUM
 from .catalog import CHAPTERS, chapter_for
 from .auth import create_token, hash_password, read_token, verify_password
+from .config import demo_mode
 
 validate_graph()
 Base.metadata.create_all(bind=engine)
@@ -53,13 +54,18 @@ allowed_origins = [o.strip() for o in origins_env.split(",") if o.strip()] or [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+# The previous default trusted every host on netlify.app and onrender.com --
+# shared domains anyone can deploy to -- while also allowing credentials. The
+# unified container serves the SPA same-origin and needs no cross-origin grant
+# at all, so a split deployment must now name its frontend explicitly via
+# CORS_ORIGINS, or opt into a pattern via CORS_ORIGIN_REGEX.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
-    allow_origin_regex=r"https://(.*\.netlify\.app|.*\.onrender\.com)",
-    allow_methods=["*"],
-    allow_headers=["*"],
-    allow_credentials=True,
+    allow_origin_regex=os.getenv("CORS_ORIGIN_REGEX") or None,
+    allow_methods=["GET", "POST", "PUT", "OPTIONS"],
+    allow_headers=["authorization", "content-type", "x-demo-teacher"],
+    allow_credentials=False,
 )
 
 def current_user(authorization: str | None = Header(default=None), db: Session = Depends(get_db)) -> User:
@@ -78,6 +84,11 @@ def require_teacher(user: User = Depends(current_user)) -> User:
     if user.role != "teacher" or not user.teacher_id:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "This area is available to teacher accounts")
     return user
+
+def require_demo_mode() -> None:
+    """Block demo-only, credential-free endpoints on a real deployment."""
+    if not demo_mode():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
 
 def student_for(code: str, db: Session):
     student = db.scalar(select(Student).where(Student.code == code))
@@ -198,24 +209,35 @@ def join_classroom(payload: JoinClassroomIn, user: User = Depends(require_studen
     }
 
 def resolve_teacher(x_demo_teacher: str = "", authorization: str | None = None, db: Session = Depends(get_db)) -> Teacher:
+    """Identify the calling teacher.
+
+    A valid bearer token is the only route outside demo mode. There is
+    deliberately no anonymous fallback: this function previously returned the
+    seeded TEACHER-PRISM record to any caller presenting no credentials at all,
+    which exposed the full classroom roster to unauthenticated requests.
+    """
+    # These handlers are also invoked directly (by the test suite and by
+    # teacher_workspace), in which case FastAPI's Header sentinel arrives
+    # unresolved instead of a string. Treat anything that is not a header
+    # string as "no credentials presented".
+    if not isinstance(authorization, str):
+        authorization = None
+    if not isinstance(x_demo_teacher, str):
+        x_demo_teacher = ""
+
     if authorization:
-        try:
-            payload = read_token(authorization)
-            user = db.get(User, payload["sub"])
-            if user and user.role == "teacher" and user.teacher_id:
-                teacher = db.get(Teacher, user.teacher_id)
-                if teacher:
-                    return teacher
-        except Exception:
-            pass
-    if x_demo_teacher:
+        payload = read_token(authorization)
+        user = db.get(User, payload["sub"])
+        if user and user.role == "teacher" and user.teacher_id:
+            teacher = db.get(Teacher, user.teacher_id)
+            if teacher:
+                return teacher
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "This area is available to teacher accounts")
+    if x_demo_teacher and demo_mode():
         teacher = db.scalar(select(Teacher).where(Teacher.demo_identity == x_demo_teacher))
         if teacher:
             return teacher
-    teacher = db.scalar(select(Teacher).where(Teacher.demo_identity == "TEACHER-PRISM"))
-    if teacher:
-        return teacher
-    raise HTTPException(403, "Teacher demo identity required")
+    raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in as a teacher to view this classroom")
 
 @app.get("/api/teacher/workspace")
 def teacher_workspace(authorization: str | None = Header(default=None), x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db)):
@@ -343,17 +365,20 @@ def demo_personas(db: Session = Depends(get_db)):
 
 @app.post("/api/demo/reset")
 def reset_demo(db: Session = Depends(get_db)):
+    require_demo_mode()
     from .seed import reset_to_seed
     reset_to_seed(db)
     return {"status": "ok", "message": "Classroom demo data reset to pristine state."}
 
 @app.get("/api/students/{code}/questions")
 def questions(code: str, stage: str, db: Session = Depends(get_db)):
+    require_demo_mode()
     student_for(code, db)
     return [question_out(q) for q in db.scalars(select(Question).where(Question.stage == stage).order_by(Question.id)).all()]
 
 @app.get("/api/students/{code}/progress")
 def student_progress(code: str, db: Session = Depends(get_db)):
+    require_demo_mode()
     student = student_for(code, db)
     progress = db.scalar(select(LearnerProgress).where(LearnerProgress.student_id == student.id, LearnerProgress.concept_id == "equivalent-fractions"))
     if not progress: raise HTTPException(404, "Progress not initialized")
@@ -361,6 +386,7 @@ def student_progress(code: str, db: Session = Depends(get_db)):
 
 @app.post("/api/students/{code}/attempts")
 def submit_attempt(code: str, payload: AttemptIn, db: Session = Depends(get_db)):
+    require_demo_mode()
     student = student_for(code, db)
     question = db.get(Question, payload.question_id)
     if not question or question.stage != payload.stage: raise HTTPException(422, "Question does not belong to this stage")
@@ -377,6 +403,7 @@ def submit_attempt(code: str, payload: AttemptIn, db: Session = Depends(get_db))
 
 @app.get("/api/teacher/overview")
 def overview(x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db)):
+    require_demo_mode()
     teacher = db.scalar(select(Teacher).where(Teacher.demo_identity == x_demo_teacher))
     if not teacher: raise HTTPException(403, "Teacher demo identity required")
     students = db.scalars(select(Student).where(Student.classroom_id == teacher.classroom_id)).all()
@@ -618,9 +645,20 @@ if frontend_dist:
     if os.path.isdir(assets_dir):
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+    _dist_root = os.path.realpath(frontend_dist)
+    _index = os.path.join(_dist_root, "index.html")
+
     @app.get("/{full_path:path}", include_in_schema=False)
     def serve_spa(full_path: str):
-        file_path = os.path.join(frontend_dist, full_path)
-        if full_path and os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(frontend_dist, "index.html"))
+        """Serve a built asset, falling back to the SPA entry point.
+
+        StaticFiles performs its own containment check; this hand-rolled handler
+        must do the same, or a path such as ../../etc/passwd escapes the build
+        directory and serves an arbitrary file off the container.
+        """
+        if full_path:
+            candidate = os.path.realpath(os.path.join(_dist_root, full_path))
+            within_root = candidate == _dist_root or candidate.startswith(_dist_root + os.sep)
+            if within_root and os.path.isfile(candidate):
+                return FileResponse(candidate)
+        return FileResponse(_index)
