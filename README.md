@@ -240,7 +240,7 @@ $$Mastery = \text{round}\left(\max\left(0.05, \min\left(0.95, 0.25 \times M_{pre
 | `POST` | `/api/teacher/interventions/recompile` | Teacher | Recompiles intervention pods dynamically from live student attempt evidence. |
 | `PUT` | `/api/teacher/interventions/{id}` | Teacher | Modifies intervention duration, activity, outcome, student assignment, or status. |
 | `GET` | `/api/demo/personas` | Public | Returns metadata for the 4 student archetypes and lead teacher. |
-| `POST` | `/api/demo/reset` | Public | Resets database to pristine pre-seeded demonstration state. |
+| `POST` | `/api/demo/reset` | Demo mode only | Resets database to pristine pre-seeded demonstration state. Returns 404 when `PRISM_DEMO_MODE=0`. |
 
 ---
 
@@ -251,9 +251,10 @@ The project includes unit and integration test coverage across both backend and 
 ### Backend Test Suite (Pytest)
 ```powershell
 cd backend
+.\.venv\Scripts\pip install -r requirements-dev.txt   # runtime deps + pytest
 .\.venv\Scripts\python -m pytest -c pytest.ini tests
 ```
-**Results: 18 passed in < 1s**
+**Results: 169 passed in ~1s**
 - `test_student_attempt_and_idempotency`: Verifies UUID deduplication and attempt grading.
 - `test_teacher_can_view_and_decide_intervention`: Verifies teacher approval, notes, and overrides.
 - `test_project_declares_a_single_cbse_curriculum`: Validates CBSE Class 8 curriculum declaration.
@@ -273,13 +274,68 @@ cd backend
 - `test_compiler_groups_using_rules_not_student_names`: Verifies `compile_groups` uses rules, not hardcoded student names.
 - `test_compiler_groups_skips_pre_diagnostic_profiles`: Verifies robustness — pre-diagnostic profiles are safely excluded from grouping.
 
+**Prerequisite DAG routing** (`test_engine.py`)
+- `test_ancestors_are_transitive` / `test_ancestors_of_unmodelled_concept_is_empty`: Validates traversal of the concept graph.
+- `test_prerequisite_mastery_ignores_unattempted_nodes`: An unattempted prerequisite is unknown, not weak.
+- `test_unknown_prerequisite_never_forces_foundation`: Prevents false foundation routing before evidence exists.
+- `test_weak_prerequisite_routes_to_foundation_with_measured_reason`: Foundation fires on a measured prerequisite score and reports it.
+
+**Derived profiles** (`test_derived_profiles.py`) — guards the claim that no profile is hand-written
+- `test_every_seeded_profile_is_reproducible_from_attempts`: Re-deriving from raw attempts reproduces every stored profile exactly.
+- `test_demo_archetypes_are_engine_outputs_not_fixtures`: All four archetypes fall out of the rules engine.
+- `test_foundation_route_is_reachable_from_prerequisite_evidence`: Foundation comes from real DAG evidence, not a seeded value.
+- `test_no_profile_exists_without_supporting_attempts`: Every profile is backed by recorded attempts.
+
+**Question bank integrity** (`test_catalog_tags.py`) — 100 parametrised checks
+- Every tagged distractor exists among its question's options, is not the correct answer, and has an entry in the misconception database.
+- `test_every_chapter_can_diagnose_at_least_one_misconception`: Diagnosis is not Chapter-1-only.
+
+**Access control** (`test_security.py`)
+- `test_anonymous_caller_cannot_resolve_a_teacher`: No credential-free path to classroom data.
+- `test_demo_header_is_rejected_outside_demo_mode` / `test_demo_only_endpoints_are_disabled_outside_demo_mode`: `PRISM_DEMO_MODE` gating.
+- `test_auth_secret_is_mandatory_outside_demo_mode`: Refuses to boot production on the public development secret.
+- `test_spa_handler_contains_path_traversal`: Static file handler cannot escape the build directory.
+
 ### Frontend Test Suite (Vitest & TypeScript Build)
 ```powershell
 cd frontend
 npm test
 npm run build
 ```
-**Results: 1 test passed in Vitest; TypeScript build clean (0 errors).**
+**Results: 6 tests passed in Vitest; TypeScript build clean (0 errors).**
+
+Covers routing (every advertised path resolves to its own page), per-route title/description/canonical uniqueness, the public landing page at `/`, and the sign-in screen at `/app`.
+
+---
+
+## 09b | Public Routes & Environment Contract
+
+### Routes
+Each path below is a real, linkable, crawlable URL with its own `<title>`, meta
+description and canonical tag, and each appears in `sitemap.xml`.
+
+| Path | Page | Indexable |
+| :--- | :--- | :--- |
+| `/` | Landing page — public marketing content | Yes (priority 1.0) |
+| `/curriculum` | CBSE Class VIII curriculum explorer | Yes |
+| `/engines` | Engines Studio (search / answer / generative) | Yes |
+| `/flowchart` | System architecture flowchart | Yes |
+| `/faq` | Help & FAQ (AEO/GEO question-answer surface) | Yes |
+| `/app` | Learner and teacher workspace (sign-in gated) | Low priority |
+
+Crawlers that do not execute JavaScript receive a `<noscript>` summary linking
+every route, alongside `/llms.txt` and `/llms-full.txt`.
+
+### Environment variables
+
+| Variable | Default | Purpose |
+| :--- | :--- | :--- |
+| `DATABASE_URL` | `sqlite:///./prism.db` | Database location. The container points this at `/data` so a mounted disk survives redeploys. |
+| `PRISM_DEMO_MODE` | `1` | `1` keeps the public persona endpoints, the `X-Demo-Teacher` header and `POST /api/demo/reset` available for judging. Set `0` for any deployment holding real learner data. |
+| `PRISM_AUTH_SECRET` | dev fallback | Bearer-token signing secret. **Mandatory** when `PRISM_DEMO_MODE=0` — the fallback value is committed to this repository, so a deployment using it can be impersonated. |
+| `CORS_ORIGINS` | localhost | Comma-separated exact origins allowed cross-origin. Unnecessary for the unified container, which serves the SPA same-origin. |
+| `CORS_ORIGIN_REGEX` | unset | Optional pattern alternative. Scope it to your own subdomain, never a whole shared host. |
+| `GEMINI_API_KEY` | unset | Enables the optional LLM fallback in the Answer Engine. Leave unset to use the deterministic solver only. Never affects learner routing. |
 
 ---
 
