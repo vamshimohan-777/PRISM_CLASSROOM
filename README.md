@@ -4,11 +4,11 @@
 > **Submission for Code Kernel '26 · Decode Round | Track: EdTech / Adaptive Learning**
 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com)
-[![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat-square&logo=react)](https://react.dev)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
-[![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat-square&logo=vite)](https://vitejs.dev)
+[![React](https://img.shields.io/badge/React-19.3-61DAFB?style=flat-square&logo=react)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-7.0-3178C6?style=flat-square&logo=typescript)](https://www.typescriptlang.org)
+[![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?style=flat-square&logo=vite)](https://vitejs.dev)
 [![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python)](https://python.org)
-[![Tests](https://img.shields.io/badge/Tests-18%2F18%20Pytest%20%2B%20Vitest%20Passed-brightgreen?style=flat-square)](#09--automated-test-suite)
+[![Tests](https://img.shields.io/badge/Tests-169%20Pytest%20%2B%206%20Vitest%20Passing-brightgreen?style=flat-square)](#09--automated-test-suite)
 [![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
 ---
@@ -131,7 +131,7 @@ flowchart TD
 | **Diverse Linguistic Backgrounds** | Trilingual engine supporting English, Hindi, and Telugu. Terminology aligns with NCERT Hindi and Telugu medium textbooks (*e.g., अंश/हर, లవం/హారం*). |
 | **Intermittent / Spotty Wi-Fi** | Built-in **Simulated Offline Mode** using `localStorage` queueing. Submissions carry client-side UUIDs (`submission_id`) ensuring idempotent, duplicate-free sync upon reconnection. |
 | **Curriculum Compliance** | Strictly mapped to **CBSE Class VIII Mathematics (NCERT Middle Stage)**, covering rational numbers, standard form, and equivalence. |
-| **AI Safety & Hallucination Risks** | **Deterministic Rules Engine**: Zero generative AI hallucinations. Rubric-based scoring backed by a validated prerequisite DAG. |
+| **AI Safety & Hallucination Risks** | **Deterministic Rules Engine**: every routing, mastery and misconception decision is produced by rubric formulas over a validated prerequisite DAG, with no model in the loop — see `engine.py`. The separate Answer Engine solves symbolically by default and only calls an LLM when `GEMINI_API_KEY` is explicitly configured; that fallback is off in the default deployment and never influences learner routing. |
 
 ---
 

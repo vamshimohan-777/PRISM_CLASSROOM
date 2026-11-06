@@ -526,7 +526,6 @@ function StudentHome({
         unit_id: selected.id,
         timestamp: new Date().toISOString(),
       });
-      const isCorrect = answer === question.options[0] || answer.includes('/'); // heuristic for preview
       setFeedback(`⚡ Saved in offline queue! Response will sync when connection is active.`);
       return;
     }
@@ -1428,16 +1427,6 @@ export default function App() {
       alert('All queued responses synced successfully to PRISM server!');
     } catch (e) {
       alert('Sync failed: ' + (e instanceof Error ? e.message : 'Please check connection'));
-    }
-  };
-
-  const handleResetDemo = async () => {
-    try {
-      await api.resetDemo();
-      alert('Demo data has been reset to initial pristine archetypes.');
-      window.location.reload();
-    } catch (e) {
-      alert('Reset failed: ' + (e instanceof Error ? e.message : ''));
     }
   };
 

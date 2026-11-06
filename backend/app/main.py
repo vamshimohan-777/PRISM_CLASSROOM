@@ -37,7 +37,8 @@ app = FastAPI(
     description=(
         "**PRISM Classroom** — Misconception-aware adaptive learning API for Indian schools.\n\n"
         "Backed by a deterministic rules engine + validated prerequisite DAG. "
-        "Zero generative AI hallucinations. 100% reproducible diagnostic routing.\n\n"
+        "Learner routing is 100% reproducible and model-free. The optional Gemini fallback in the "
+        "Answer Engine is disabled unless GEMINI_API_KEY is set, and never affects routing.\n\n"
         "**Track:** EdTech / Adaptive Learning · Code Kernel '26 · Decode Round\n\n"
         "**Demo credentials (all):** `PrismDemo!2026`\n\n"
         "| Persona | Email | Role |\n"

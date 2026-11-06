@@ -1,7 +1,7 @@
+# Runtime dependencies only. Install test tooling with requirements-dev.txt.
 fastapi==0.115.6
 uvicorn[standard]==0.34.0
 sqlalchemy==2.0.36
 pydantic==2.10.3
-pytest==8.3.4
+# Used by the Answer and Generative engines for the optional Gemini fallback.
 httpx==0.28.1
-

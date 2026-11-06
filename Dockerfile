@@ -26,24 +26,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies (production only — no pytest/httpx)
+# Install Python dependencies. requirements.txt is the single source of truth:
+# this previously copied the file and then ignored it in favour of a duplicated
+# inline list, so the two could drift apart unnoticed.
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir \
-        fastapi==0.115.6 \
-        uvicorn[standard]==0.34.0 \
-        sqlalchemy==2.0.36 \
-        pydantic==2.10.3 \
-        httpx==0.28.1
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend source
 COPY backend/app ./app
+COPY backend/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 # Copy built React bundle → served as static files by FastAPI
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Seed the demo database at image build time so the container
-# starts immediately without a migration step.
-RUN python -m app.seed
+# Default the database onto /data so a mounted disk survives redeploys.
+# Seeding happens on first start (see entrypoint.sh), not at build time:
+# baking prism.db into an image layer discarded all learner data on every
+# redeploy.
+RUN mkdir -p /data
+ENV DATABASE_URL=sqlite:////data/prism.db
 
 # Render injects $PORT at runtime; default to 8000
 ENV PORT=8000
@@ -51,4 +53,4 @@ ENV PORT=8000
 EXPOSE 8000
 
 # --workers 1 keeps SQLite writes safe on the free tier
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 1"]
+CMD ["./entrypoint.sh"]

@@ -1,6 +1,8 @@
 """Deterministic learning rules. Values are rubric scores, never probabilities.
 
-All routing decisions are rule-based and fully reproducible. No generative AI is used.
+All routing decisions in this module are rule-based and fully reproducible; no model is
+consulted here. (The Answer Engine has a separate, optional LLM fallback that is off by
+default and plays no part in routing.)
 """
 from dataclasses import dataclass
 
