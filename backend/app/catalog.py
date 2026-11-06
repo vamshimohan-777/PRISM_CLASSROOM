@@ -79,3 +79,86 @@ QUESTION_BANK["comparing-quantities"] += [
 
 def chapter_for(chapter_id: str) -> dict | None:
     return next((chapter for chapter in CHAPTERS if chapter["id"] == chapter_id), None)
+
+
+# ---------------------------------------------------------------------------
+# Misconception tags for the chapter question bank.
+#
+# Keyed by the question id that `seed.py` derives as
+# f"{chapter_id}-{stage}-{position}", where position counts every entry in that
+# chapter's QUESTION_BANK list from 1. Each value maps a *distractor option* to
+# the cognitive error a learner who picks it is most likely making, which is
+# what lets the rules engine classify an error instead of merely marking it
+# wrong. Distractors with no single clear diagnosis are deliberately left
+# untagged rather than given a speculative label.
+# ---------------------------------------------------------------------------
+
+MISCONCEPTION_TAGS: dict[str, dict[str, str]] = {
+    # --- Ch 1: Rational Numbers -------------------------------------------
+    "rational-numbers-diagnostic-1": {"2/3": "additive-bias", "1/4": "unequal-operations"},
+    "rational-numbers-practice-2": {"5": "unequal-operations", "8": "additive-bias"},
+    "rational-numbers-test-3": {"3/6": "denominator-magnitude", "5/6": "additive-bias", "2/6": "unequal-operations"},
+    "rational-numbers-diagnostic-4": {"Associativity": "property-confusion", "Distributivity": "property-confusion", "Closure": "property-confusion"},
+    "rational-numbers-practice-5": {"-5/3": "inverse-type-confusion", "5/3": "inverse-type-confusion", "-3/5": "sign-error"},
+    "rational-numbers-test-6": {"1/8": "denominator-magnitude"},
+
+    # --- Ch 2: Linear Equations in One Variable ---------------------------
+    "linear-equations-diagnostic-1": {"25": "sign-inversion-slip", "3": "coefficient-confusion"},
+    "linear-equations-practice-2": {"26": "sign-inversion-slip"},
+    "linear-equations-test-3": {},
+    "linear-equations-diagnostic-4": {"42": "inverse-operation-slip"},
+    "linear-equations-practice-5": {"17 and 20": "equation-setup-slip", "15 and 22": "equation-setup-slip", "16 and 21": "equation-setup-slip"},
+    "linear-equations-test-6": {"16": "equation-setup-slip", "20": "equation-setup-slip", "19": "equation-setup-slip"},
+
+    # --- Ch 3: Understanding Quadrilaterals -------------------------------
+    "quadrilaterals-diagnostic-1": {"180°": "angle-sum-slip", "540°": "angle-sum-slip", "270°": "angle-sum-slip"},
+    "quadrilaterals-practice-2": {"trapezium": "quadrilateral-classification-slip", "kite": "quadrilateral-classification-slip"},
+    "quadrilaterals-test-3": {"65°": "angle-sum-slip", "95°": "angle-sum-slip", "85°": "angle-sum-slip"},
+    "quadrilaterals-diagnostic-4": {"4": "angle-sum-slip", "6": "angle-sum-slip", "7": "angle-sum-slip"},
+    "quadrilaterals-practice-5": {"180°": "quadrilateral-classification-slip", "60°": "quadrilateral-classification-slip"},
+    "quadrilaterals-test-6": {"75°, 105°, 105°": "quadrilateral-classification-slip", "75°, 75°, 75°": "quadrilateral-classification-slip"},
+
+    # --- Ch 4: Practical Geometry -----------------------------------------
+    "practical-geometry-diagnostic-1": {"protractor": "construction-tool-slip", "ruler": "construction-tool-slip", "set square": "construction-tool-slip"},
+    "practical-geometry-practice-2": {"only one side": "construction-data-slip", "only one angle": "construction-data-slip"},
+    "practical-geometry-test-3": {"guessing lengths": "construction-data-slip", "drawing quickly": "construction-data-slip"},
+    "practical-geometry-diagnostic-4": {"3 sides only": "construction-data-slip", "2 sides only": "construction-data-slip", "4 sides and no angles": "construction-data-slip"},
+    "practical-geometry-practice-5": {"AB": "construction-data-slip", "angle A": "construction-data-slip", "angle B": "construction-data-slip"},
+    "practical-geometry-test-6": {"10 cm": "pythagoras-slip", "25 cm": "perimeter-area-confusion", "5 cm": "pythagoras-slip"},
+
+    # --- Ch 5: Data Handling ----------------------------------------------
+    "data-handling-diagnostic-1": {"1/4": "probability-denominator-slip", "1": "probability-denominator-slip", "0": "probability-denominator-slip"},
+    "data-handling-practice-2": {"18": "mean-median-confusion", "5": "mean-median-confusion", "7": "mean-median-confusion"},
+    "data-handling-test-3": {"2/3": "probability-denominator-slip", "3/5": "probability-denominator-slip", "1/5": "probability-denominator-slip"},
+    "data-handling-diagnostic-4": {"45°": "percentage-base-confusion", "180°": "percentage-base-confusion"},
+    "data-handling-practice-5": {"5": "mean-median-confusion", "3": "mean-median-confusion"},
+    "data-handling-test-6": {"5/3": "probability-denominator-slip", "3/8": "probability-denominator-slip"},
+
+    # --- Ch 6: Squares and Square Roots -----------------------------------
+    "squares-roots-diagnostic-1": {"18": "perfect-square-recognition", "30": "perfect-square-recognition", "45": "perfect-square-recognition"},
+    "squares-roots-practice-2": {"14": "perfect-square-recognition", "11": "perfect-square-recognition"},
+    "squares-roots-test-3": {"81 cm": "perimeter-area-confusion", "8 cm": "perfect-square-recognition"},
+    "squares-roots-diagnostic-4": {"12": "perfect-square-recognition", "14": "perfect-square-recognition"},
+    "squares-roots-practice-5": {"9": "square-root-halving", "16": "perfect-square-recognition"},
+    "squares-roots-test-6": {"3+4 = 7, close to 5": "pythagoras-slip", "All are odd": "pythagoras-slip", "3×4 = 12, 12-5 = 7": "pythagoras-slip"},
+
+    # --- Ch 7: Cubes and Cube Roots ---------------------------------------
+    "cubes-roots-diagnostic-1": {"16": "cube-square-confusion", "36": "cube-square-confusion", "49": "cube-square-confusion"},
+    "cubes-roots-practice-2": {"8": "cube-square-confusion", "2": "cube-square-confusion"},
+    "cubes-roots-test-3": {"25 cm": "perimeter-area-confusion"},
+    "cubes-roots-diagnostic-4": {},
+    "cubes-roots-practice-5": {"100": "cube-square-confusion", "30": "cube-square-confusion"},
+    "cubes-roots-test-6": {"Yes, ∛392 = 14": "cube-square-confusion", "Yes, because 392 = 8 × 49": "cube-square-confusion"},
+
+    # --- Ch 8: Comparing Quantities ---------------------------------------
+    "comparing-quantities-diagnostic-1": {"1/5": "percentage-base-confusion", "25/1": "percentage-base-confusion", "1/2": "percentage-base-confusion"},
+    "comparing-quantities-practice-2": {"₹450": "percentage-base-confusion", "₹10": "percentage-base-confusion", "₹90": "percentage-base-confusion"},
+    "comparing-quantities-test-3": {"20%": "percentage-base-confusion", "50%": "percentage-base-confusion", "40%": "percentage-base-confusion"},
+    "comparing-quantities-diagnostic-4": {"3%": "percentage-base-confusion", "13%": "percentage-base-confusion"},
+    "comparing-quantities-practice-5": {"₹2,000": "interest-simple-vs-compound", "₹1,000": "interest-simple-vs-compound"},
+    "comparing-quantities-test-6": {"₹13,500": "percentage-base-confusion", "₹13,000": "percentage-base-confusion"},
+}
+
+
+def misconception_tags_for(question_id: str) -> dict[str, str]:
+    return MISCONCEPTION_TAGS.get(question_id, {})

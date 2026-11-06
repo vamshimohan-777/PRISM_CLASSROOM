@@ -5,7 +5,7 @@ from .engine import validate_graph, compile_groups
 from .scoring import recompute_student
 from .curriculum import CBSE_CURRICULUM
 from .auth import hash_password
-from .catalog import CHAPTERS, QUESTION_BANK
+from .catalog import CHAPTERS, QUESTION_BANK, misconception_tags_for
 
 CONCEPTS = [
  ("fraction-parts", "Fraction parts", "Identify numerator, denominator, sign, and equal parts of a rational number.", []),
@@ -52,7 +52,7 @@ def main():
   for index,(stage,prompt,options,answer,explanation) in enumerate(QUESTION_BANK[chapter["id"]],start=1):
    question_id=f'{chapter["id"]}-{stage}-{index}'
    if not db.get(Question,question_id):
-    db.add(Question(id=question_id,concept_id=chapter["concept"],stage=stage,difficulty=index,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map={},is_transfer=stage=="test"))
+    db.add(Question(id=question_id,concept_id=chapter["concept"],stage=stage,difficulty=index,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map=misconception_tags_for(question_id),is_transfer=stage=="test"))
  for qid,concept,stage,difficulty,prompt,options,answer,explanation,mapping in QUESTIONS:
   if not db.get(Question,qid): db.add(Question(id=qid,concept_id=concept,stage=stage,difficulty=difficulty,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map=mapping,is_transfer=stage=="test"))
  # Demo learners carry identity only. Their mastery, misconception label and
