@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useState } from 'react';
 import {
   ArrowRight,
   CheckCircle2,
@@ -40,6 +40,7 @@ import {
   JoinClassroomModal,
 } from './TeacherModals';
 import { LandingPage, CurriculumPage, FlowchartPage, AeoGeoFaqPage } from './Pages';
+import { ROUTES, applyPageMeta, tabFromPath, type ActiveTab } from './seo';
 import { EnginesHub } from './EnginesHub';
 import {
   getLocalizedChapterTitle,
@@ -49,7 +50,7 @@ import {
   getLocalizedExplanation,
 } from './localization';
 
-export type ActiveTab = 'app' | 'home' | 'curriculum' | 'faq' | 'engines';
+export type { ActiveTab };
 
 type Session = Auth;
 const sessionKey = 'prism-session';
@@ -130,6 +131,13 @@ function Topbar({
               onClick={() => onTabChange('faq')}
             >
               {t.navFaq}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'flowchart' ? 'active' : ''}`}
+              onClick={() => onTabChange('flowchart')}
+            >
+              {t.navFlowchart}
             </button>
             <button
               type="button"
@@ -279,6 +287,13 @@ function AuthScreen({
               onClick={() => onTabChange('faq')}
             >
               {t.navFaq}
+            </button>
+            <button
+              type="button"
+              className={`site-nav-btn ${activeTab === 'flowchart' ? 'active' : ''}`}
+              onClick={() => onTabChange('flowchart')}
+            >
+              {t.navFlowchart}
             </button>
             <button
               type="button"
@@ -1263,6 +1278,13 @@ function PublicHeader({
             </button>
             <button
               type="button"
+              className={`site-nav-btn ${activeTab === 'flowchart' ? 'active' : ''}`}
+              onClick={() => onTabChange('flowchart')}
+            >
+              {t.navFlowchart}
+            </button>
+            <button
+              type="button"
               className={`site-nav-btn ${activeTab === 'engines' ? 'active' : ''}`}
               onClick={() => onTabChange('engines')}
             >
@@ -1328,7 +1350,30 @@ export default function App() {
     }
   });
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('app');
+  // Tab state is mirrored into the URL so every page is a real, linkable,
+  // crawlable address rather than transient component state.
+  const [activeTab, setActiveTabState] = useState<ActiveTab>(() =>
+    typeof window === 'undefined' ? 'home' : tabFromPath(window.location.pathname)
+  );
+
+  const setActiveTab = useCallback((tab: ActiveTab) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined' && window.location.pathname !== ROUTES[tab]) {
+      window.history.pushState({ tab }, '', ROUTES[tab]);
+    }
+  }, []);
+
+  // Keep the browser's back and forward buttons working.
+  useEffect(() => {
+    const onPopState = () => setActiveTabState(tabFromPath(window.location.pathname));
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Retarget title, description, canonical and social tags at the active route.
+  useEffect(() => {
+    applyPageMeta(activeTab);
+  }, [activeTab]);
   const [lang, setLang] = useState<Language>('en');
   const [isOffline, setIsOffline] = useState(false);
   const [offlineQueue, setOfflineQueue] = useState<QueuedAttempt[]>(() => {
@@ -1427,6 +1472,7 @@ export default function App() {
             {activeTab === 'curriculum' && (
               <CurriculumPage lang={lang} onLaunchApp={() => setActiveTab('app')} />
             )}
+            {activeTab === 'flowchart' && <FlowchartPage />}
             {activeTab === 'faq' && <AeoGeoFaqPage lang={lang} />}
             {activeTab === 'engines' && (
               <EnginesHub lang={lang} onNavigateToCurriculum={() => setActiveTab('curriculum')} />
@@ -1461,6 +1507,7 @@ export default function App() {
       {activeTab === 'curriculum' && (
         <CurriculumPage lang={lang} onLaunchApp={() => setActiveTab('app')} />
       )}
+      {activeTab === 'flowchart' && <FlowchartPage />}
       {activeTab === 'faq' && <AeoGeoFaqPage lang={lang} />}
       {activeTab === 'engines' && (
         <EnginesHub lang={lang} onNavigateToCurriculum={() => setActiveTab('curriculum')} />

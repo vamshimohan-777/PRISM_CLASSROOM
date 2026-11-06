@@ -18,12 +18,18 @@
     <meta property="og:url" content="https://prism-classroom.onrender.com/" />
     <meta property="og:title" content="PRISM Classroom — Misconception-Aware Adaptive Learning" />
     <meta property="og:description" content="One concept. Many learning paths. One teacher-led classroom. CBSE Class VIII Mathematics adaptive learning with the Teacher Intervention Compiler." />
-    <meta property="og:image" content="https://prism-classroom.onrender.com/assets/prism-preview.png" />
+    <meta property="og:image" content="https://prism-classroom.onrender.com/prism-preview.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="PRISM Classroom — misconception-aware adaptive learning for CBSE Class VIII Mathematics" />
+    <meta property="og:site_name" content="PRISM Classroom" />
+    <meta property="og:locale" content="en_IN" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="PRISM Classroom — Adaptive Learning Copilot" />
     <meta name="twitter:description" content="Misconception-aware adaptive learning that keeps teachers at the centre. Built for CBSE/NCERT Class VIII Mathematics." />
+    <meta name="twitter:image" content="https://prism-classroom.onrender.com/prism-preview.png" />
 
     <!-- Favicon: Inline SVG -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%235946c9'/><text x='50%25' y='72%25' font-family='Georgia,serif' font-size='22' fill='white' text-anchor='middle'>P</text></svg>" />
@@ -133,6 +139,38 @@
     </script>
   </head>
   <body>
+    <noscript>
+      <!-- Crawlers and answer engines that do not execute JavaScript would
+           otherwise see an empty root div. This mirrors the key page content
+           and links every route in sitemap.xml so they remain discoverable. -->
+      <main style="max-width:48rem;margin:0 auto;padding:2rem 1rem;font-family:Georgia,serif;line-height:1.6">
+        <h1>PRISM Classroom</h1>
+        <p><strong>Misconception-aware adaptive learning that keeps teachers at the centre.</strong>
+           CBSE Class VIII Mathematics, NCERT-aligned.</p>
+        <p>PRISM diagnoses <em>why</em> a learner answered incorrectly rather than only marking the
+           answer wrong. Short diagnostic items classify the underlying misconception, a deterministic
+           rules engine over a validated prerequisite concept graph selects a learning route, and the
+           evidence is compiled into small-group intervention pods that the teacher approves or edits.</p>
+        <h2>How a learner is routed</h2>
+        <ul>
+          <li><strong>Foundation</strong> — a prerequisite concept is measurably weak, so scaffolding comes first.</li>
+          <li><strong>Visual support</strong> — one error pattern dominates, so the representation changes.</li>
+          <li><strong>Guided practice</strong> — the signal is not yet clear enough to label.</li>
+          <li><strong>Follow-up</strong> — evidence is mixed; the teacher asks one discriminating question.</li>
+          <li><strong>Extension</strong> — an unassisted transfer item was passed at high mastery.</li>
+        </ul>
+        <p>A single wrong answer never establishes a misconception label.</p>
+        <h2>Pages</h2>
+        <ul>
+          <li><a href="/curriculum">CBSE Class VIII Mathematics curriculum explorer</a></li>
+          <li><a href="/engines">Engines Studio: search, answer and generative engines</a></li>
+          <li><a href="/flowchart">System architecture flowchart</a></li>
+          <li><a href="/faq">Help and frequently asked questions</a></li>
+          <li><a href="/app">Sign in to the classroom workspace</a></li>
+        </ul>
+        <p>Machine-readable summaries: <a href="/llms.txt">llms.txt</a>, <a href="/llms-full.txt">llms-full.txt</a>.</p>
+      </main>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
