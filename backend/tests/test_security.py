@@ -103,3 +103,22 @@ def test_spa_handler_contains_path_traversal(tmp_path, attack):
 
     assert os.path.realpath(served).startswith(dist_root)
     assert "outside.txt" not in served
+
+
+# ---------------------------------------------------------------------------
+# Deployment configuration
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("given,expected", [
+    # Render and Heroku hand out the legacy scheme SQLAlchemy 2 rejects.
+    ("postgres://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),
+    ("postgresql://u:p@host:5432/db", "postgresql+psycopg://u:p@host:5432/db"),
+    # Already explicit, and SQLite, must pass through untouched.
+    ("postgresql+psycopg://u:p@host/db", "postgresql+psycopg://u:p@host/db"),
+    ("sqlite:///./prism.db", "sqlite:///./prism.db"),
+    ("sqlite:////data/prism.db", "sqlite:////data/prism.db"),
+])
+def test_database_url_is_normalised_for_sqlalchemy2(given, expected):
+    from app.database import normalise_database_url
+
+    assert normalise_database_url(given) == expected

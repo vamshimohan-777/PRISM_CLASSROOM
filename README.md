@@ -339,6 +339,31 @@ every route, alongside `/llms.txt` and `/llms-full.txt`.
 
 ---
 
+## 09c | Deployment
+
+Frontend and backend deploy as **one** Render web service: the Dockerfile
+builds the React bundle and FastAPI serves it alongside `/api/*` on a single
+port, so there is no second service and no cross-origin setup.
+
+```bash
+git push -u origin <branch>
+# render.com -> New -> Blueprint -> connect this repo -> Apply
+```
+
+Render reads `render.yaml` and configures the runtime, health check and every
+environment variable, generating a random `PRISM_AUTH_SECRET` on first deploy.
+
+**One caveat worth knowing before judging:** Render free instances have an
+ephemeral filesystem and cannot mount a persistent disk, so SQLite is
+recreated (and the demo reseeded) whenever the instance restarts or wakes from
+idle. `DEPLOY.md` documents two durable alternatives — free managed Postgres,
+or a disk on a paid instance — both of which are a config change only.
+
+See **[DEPLOY.md](DEPLOY.md)** for the step-by-step walkthrough, the full
+environment-variable table, local Docker instructions and troubleshooting.
+
+---
+
 ## 10 | Local Quick Start Guide
 
 ### Prerequisites

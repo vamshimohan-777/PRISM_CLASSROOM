@@ -5,3 +5,6 @@ sqlalchemy==2.0.36
 pydantic==2.10.3
 # Used by the Answer and Generative engines for the optional Gemini fallback.
 httpx==0.28.1
+# Postgres driver. Unused by the default SQLite deployment, but present so the
+# managed-Postgres option in render.yaml works by uncommenting alone.
+psycopg[binary]==3.2.3

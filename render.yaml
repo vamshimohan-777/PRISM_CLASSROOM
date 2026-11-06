@@ -1,16 +1,16 @@
 # ============================================================
 # PRISM CLASSROOM — Render Blueprint
-# One-click deploy: React frontend + FastAPI backend
-# in a single Docker container served on port 8000.
 #
-# Deploy steps:
-#   1. Fork or push this repo to GitHub
-#   2. Go to https://render.com → New → Blueprint
-#   3. Connect your repo — Render reads this file automatically
-#   4. Click "Apply" — done!
+# Deploys the React frontend and the FastAPI backend as ONE Docker web
+# service on a single port. The Dockerfile builds the SPA, then FastAPI
+# serves the built bundle alongside /api/*, so there is no second service,
+# no cross-origin configuration and no separate frontend host to keep in
+# sync. See DEPLOY.md for the click-by-click walkthrough.
 #
-# Service URL after deploy:
-#   https://prism-classroom.onrender.com
+# Deploy:
+#   1. Push this repo to GitHub
+#   2. render.com -> New -> Blueprint -> connect the repo
+#   3. Apply. Render reads this file; no manual settings needed.
 # ============================================================
 
 services:
@@ -21,51 +21,76 @@ services:
     dockerfilePath: ./Dockerfile
     autoDeploy: true
 
-    # Health check — Render marks the service healthy when this returns 200
+    # Render marks the service healthy once this returns 200.
     healthCheckPath: /api/health
 
-    # Persistent storage for the SQLite database. Without this the database
-    # lives in the container filesystem and every redeploy or restart wipes
-    # all learner data. entrypoint.sh seeds the demo only when the disk is
-    # empty, so real attempts are preserved across deploys.
-    disk:
-      name: prism-data
-      mountPath: /data
-      sizeGB: 1
-
-    # Environment variables
     envVars:
       - key: PORT
         value: "8000"
 
-      # Keep the database on the mounted disk declared above.
+      # --- Database -------------------------------------------------
+      # Free instances have an EPHEMERAL filesystem and cannot mount a
+      # persistent disk, so on the free plan the SQLite file is recreated
+      # whenever the instance restarts or redeploys, and entrypoint.sh
+      # reseeds the demo classroom. That is fine for judging; learner data
+      # entered during a session is not durable.
+      #
+      # For durable storage pick ONE of the two options below.
+      #
+      # Option A — free managed Postgres (recommended; survives redeploys,
+      # but a free Render Postgres instance expires 30 days after creation).
+      # Uncomment the `databases:` block at the bottom of this file and
+      # replace the DATABASE_URL entry below with:
+      #
+      #   - key: DATABASE_URL
+      #     fromDatabase:
+      #       name: prism-db
+      #       property: connectionString
+      #
+      # Option B — persistent disk (requires a PAID instance type; disks are
+      # not available on free). Set `plan: starter` above, then add:
+      #
+      #   disk:
+      #     name: prism-data
+      #     mountPath: /data
+      #     sizeGB: 1
+      #
+      # and set DATABASE_URL to sqlite:////data/prism.db
       - key: DATABASE_URL
         value: "sqlite:////data/prism.db"
 
-      # Signing secret for bearer tokens. Render generates a strong random
-      # value on first deploy; never fall back to the development secret
-      # committed in this repository.
+      # --- Security -------------------------------------------------
+      # Render generates a strong random value on first deploy. Never fall
+      # back to the development secret committed in this repository.
       - key: PRISM_AUTH_SECRET
         generateValue: true
 
       # Demo mode keeps the public persona endpoints, the X-Demo-Teacher
       # header and POST /api/demo/reset available for judging. Set this to
-      # "0" before any deployment holding real learner data -- doing so also
+      # "0" before any deployment holding real learner data; doing so also
       # makes PRISM_AUTH_SECRET mandatory at boot.
       - key: PRISM_DEMO_MODE
         value: "1"
 
-      # Optional: add your Gemini API key to enable the LLM fallback
-      # in the Answer Engine. Leave empty to use the deterministic solver.
+      # --- Optional -------------------------------------------------
+      # Exact cross-origin callers, comma-separated. The unified container
+      # serves the SPA same-origin, so this stays empty unless you deploy a
+      # separate frontend. CORS_ORIGIN_REGEX exists for pattern matching but
+      # should name your own subdomain, never a whole shared host such as
+      # onrender.com.
+      - key: CORS_ORIGINS
+        value: ""
+
+      # Enables the LLM fallback in the Answer Engine. Leave empty to use the
+      # deterministic solver only; it never affects learner routing.
       - key: GEMINI_API_KEY
         value: ""
 
-      # Set the allowed CORS origins for your deployed frontend.
-      # If using the unified container (default), leave this empty —
-      # the React SPA is served from the same origin as the API.
-      # If you deploy the frontend separately, add its exact URL here
-      # (comma-separated). CORS_ORIGIN_REGEX exists for pattern matching but
-      # should name your own subdomain, never a whole shared host such as
-      # *.onrender.com.
-      - key: CORS_ORIGINS
-        value: ""
+# --- Option A: free managed Postgres --------------------------------
+# Uncomment together with the DATABASE_URL change described above.
+#
+# databases:
+#   - name: prism-db
+#     plan: free
+#     databaseName: prism
+#     user: prism
