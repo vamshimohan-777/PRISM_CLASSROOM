@@ -42,7 +42,7 @@ export const PAGE_META: Record<ActiveTab, PageMeta> = {
       'PRISM Classroom diagnoses why a CBSE Class VIII learner got a question wrong, not just that they did, and compiles the evidence into teacher-approved small-group intervention pods.',
   },
   app: {
-    title: 'Sign In — PRISM Classroom Learning Workspace',
+    title: 'Learning Workspace — PRISM Classroom',
     description:
       'Sign in to the PRISM Classroom workspace: adaptive CBSE Class VIII Mathematics activities for learners and the Teacher Intervention Compiler for educators.',
   },

@@ -62,6 +62,7 @@ password `PrismDemo!2026` — see `DEMO_LOGINS.md`.
 | `PRISM_AUTH_SECRET` | generated | Render creates a random secret on first deploy, so tokens are never signed with the development fallback committed in this repo. |
 | `PRISM_DEMO_MODE` | `1` | Keeps the persona endpoints and `POST /api/demo/reset` available for judging. Set to `0` for real learner data. |
 | `CORS_ORIGINS` | empty | Not needed — the SPA is same-origin. |
+| `GEMINI_MODEL` | `gemini-2.5-flash` | Model for the optional Answer Engine fallback |
 | `GEMINI_API_KEY` | empty | Optional Answer Engine fallback; never affects learner routing. |
 
 ---

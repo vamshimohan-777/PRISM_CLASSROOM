@@ -1,6 +1,22 @@
 import { useState } from 'react';
 import { Plan, StudentDetail, LearnerSummary } from './api';
 import { Language, TRANSLATIONS } from './translations';
+import {
+  fill,
+  localisedDuration,
+  localisedPlanText,
+  misconceptionLabel,
+  PREREQUISITE_LABELS,
+  prerequisiteName,
+  routeLabel,
+  teacherText,
+} from './teacherText';
+import {
+  getLocalizedChapterTitle,
+  getLocalizedExplanation,
+  getLocalizedOptionLabel,
+  getLocalizedQuestionPrompt,
+} from './localization';
 import { CheckCircle2, Clock3, AlertCircle, FileText, Printer, X, Sparkles, UserCheck, Shield, Copy, Check, UserPlus } from 'lucide-react';
 
 interface EditPlanModalProps {
@@ -20,6 +36,7 @@ export function EditPlanModal({ plan, allLearners, lang, onSave, onClose }: Edit
   const [selectedStudents, setSelectedStudents] = useState<string[]>(plan.student_codes);
   const [busy, setBusy] = useState(false);
   const t = TRANSLATIONS[lang];
+  const x = teacherText(lang);
 
   const toggleStudent = (code: string) => {
     if (selectedStudents.includes(code)) {
@@ -54,43 +71,43 @@ export function EditPlanModal({ plan, allLearners, lang, onSave, onClose }: Edit
       <div className="modal-container edit-plan-modal">
         <div className="modal-header">
           <div>
-            <span className="eyebrow">TEACHER INTERVENTION COMPILER</span>
-            <h3>Edit Intervention: {plan.barrier}</h3>
+            <span className="eyebrow">{x.editEyebrow}</span>
+            <h3>{x.editTitle} {localisedPlanText(plan.barrier, lang)}</h3>
           </div>
           <button className="icon-close" onClick={onClose}><X size={20} /></button>
         </div>
 
         <form onSubmit={handleSave} className="modal-form">
           <div className="form-group">
-            <label>Plan Status Decision:
+            <label>{x.statusDecision}
               <div className="status-selector">
                 <button
                   type="button"
                   className={status === 'approved' ? 'active-status approved' : ''}
                   onClick={() => setStatus('approved')}
                 >
-                  <CheckCircle2 size={16} /> Approve Plan
+                  <CheckCircle2 size={16} /> {x.approvePlan}
                 </button>
                 <button
                   type="button"
                   className={status === 'modified' ? 'active-status modified' : ''}
                   onClick={() => setStatus('modified')}
                 >
-                  <Sparkles size={16} /> Modified by Teacher
+                  <Sparkles size={16} /> {x.modifiedByTeacher}
                 </button>
                 <button
                   type="button"
                   className={status === 'rejected' ? 'active-status rejected' : ''}
                   onClick={() => setStatus('rejected')}
                 >
-                  <X size={16} /> Dismiss / Reject
+                  <X size={16} /> {x.dismissReject}
                 </button>
               </div>
             </label>
           </div>
 
           <div className="form-group">
-            <label>Prescribed Instructional Activity:
+            <label>{x.activityLabel}
               <textarea
                 required
                 rows={3}
@@ -102,19 +119,19 @@ export function EditPlanModal({ plan, allLearners, lang, onSave, onClose }: Edit
 
           <div className="form-row">
             <div className="form-group">
-              <label>Allocated Time:
+              <label>{x.timeLabel}
                 <select value={duration} onChange={(e) => setDuration(e.target.value)}>
-                  <option value="5 min">5 min (Quick check)</option>
-                  <option value="10 min">10 min (Focused support)</option>
-                  <option value="12 min">12 min (Standard pod)</option>
-                  <option value="15 min">15 min (Deep extension)</option>
-                  <option value="20 min">20 min (Extended group)</option>
+                  <option value="5 min">{x.time5}</option>
+                  <option value="10 min">{x.time10}</option>
+                  <option value="12 min">{x.time12}</option>
+                  <option value="15 min">{x.time15}</option>
+                  <option value="20 min">{x.time20}</option>
                 </select>
               </label>
             </div>
 
             <div className="form-group">
-              <label>Target Outcome:
+              <label>{x.outcomeLabel}
                 <input
                   required
                   value={outcome}
@@ -125,7 +142,7 @@ export function EditPlanModal({ plan, allLearners, lang, onSave, onClose }: Edit
           </div>
 
           <div className="form-group">
-            <label>Assigned Students (Click to toggle/reassign):
+            <label>{x.studentsLabel}
               <div className="student-pill-list">
                 {allLearners.map((learner) => {
                   const isAssigned = selectedStudents.includes(learner.code);
@@ -149,7 +166,7 @@ export function EditPlanModal({ plan, allLearners, lang, onSave, onClose }: Edit
             <label>{t.teacherNotes}:
               <textarea
                 rows={2}
-                placeholder="Add pedagogical observations, seating notes, or scaffolding instructions..."
+                placeholder={x.notesPlaceholder}
                 value={teacherNotes}
                 onChange={(e) => setTeacherNotes(e.target.value)}
               />
@@ -161,7 +178,7 @@ export function EditPlanModal({ plan, allLearners, lang, onSave, onClose }: Edit
               {t.cancel}
             </button>
             <button type="submit" className="btn-primary" disabled={busy}>
-              {busy ? 'Saving...' : t.saveChanges}
+              {busy ? x.saving : t.saveChanges}
             </button>
           </div>
         </form>
@@ -179,57 +196,87 @@ interface StudentDossierModalProps {
 export function StudentDossierModal({ detail, lang, onClose }: StudentDossierModalProps) {
   if (!detail) return null;
   const t = TRANSLATIONS[lang];
+  const x = teacherText(lang);
+  const gapText = (gap?: { concept_id: string; title: string } | null) =>
+    gap ? `${x.weakPrerequisite} ${prerequisiteName(gap.concept_id, lang, gap.title)}` : '';
+  const barrier = misconceptionLabel(detail.misconception, lang, detail.misconception_title) || gapText(detail.prerequisite_gap);
 
   return (
     <div className="modal-backdrop">
       <div className="modal-container dossier-modal">
         <div className="modal-header">
           <div className="dossier-id">
-            <span className="eyebrow">LEARNER EVIDENCE DOSSIER</span>
+            <span className="eyebrow">{x.dossierEyebrow}</span>
             <h3>{detail.name} <small>({detail.code})</small></h3>
-            <p className="student-meta-info">Class VIII CBSE · Email: {detail.email}</p>
+            <p className="student-meta-info">{x.classMeta} · {x.emailLabel}: {detail.email}</p>
           </div>
           <button className="icon-close" onClick={onClose}><X size={20} /></button>
         </div>
 
         <div className="dossier-metrics">
           <div className="dossier-card">
-            <span>Estimated Mastery</span>
+            <span>{x.estMastery}</span>
             <b>{Math.round(detail.mastery * 100)}%</b>
             <div className="mini-progress">
               <i style={{ width: `${detail.mastery * 100}%` }} />
             </div>
           </div>
           <div className="dossier-card">
-            <span>Evidence Responses</span>
+            <span>{x.evidenceResponses}</span>
             <b>{detail.evidence_count}</b>
-            <small>Total observable attempts</small>
+            <small>{x.totalAttempts}</small>
           </div>
           <div className="dossier-card">
-            <span>Diagnosed Barrier</span>
-            <b className="purple-text">{detail.misconception || 'No persistent error'}</b>
+            <span>{x.diagnosedBarrier}</span>
+            <b className="purple-text">{barrier || x.noPersistentError}</b>
             <small>
               {detail.misconception_confidence
-                ? `${Math.round(detail.misconception_confidence * 100)}% rule confidence`
-                : 'Secured or provisional'}
+                ? `${Math.round(detail.misconception_confidence * 100)}% ${x.ruleConfidence}`
+                : x.noLabelYet}
             </small>
           </div>
           <div className="dossier-card">
-            <span>Recommended Route</span>
-            <b className="badge-pill teal">{detail.recommendation.toUpperCase()}</b>
-            <small>Prerequisite: {detail.prerequisite_status}</small>
+            <span>{x.recommendedRoute}</span>
+            <b className="badge-pill teal">{routeLabel(detail.recommendation, lang)}</b>
+            <small>{x.prerequisiteLabel}: {PREREQUISITE_LABELS[detail.prerequisite_status]?.[lang] ?? detail.prerequisite_status}</small>
           </div>
         </div>
 
+        {detail.chapters && detail.chapters.length > 0 && (
+          <div className="dossier-history-section">
+            <h4>{x.byChapter}</h4>
+            <table className="print-plan-table dossier-chapter-table">
+              <thead>
+                <tr>
+                  <th>{x.thChapter}</th>
+                  <th>{x.thMastery}</th>
+                  <th>{x.thResponses}</th>
+                  <th>{x.thBarrier}</th>
+                  <th>{x.thRoute}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {detail.chapters.map((chapter) => (
+                  <tr key={chapter.unit_id}>
+                    <td>{x.chapterShort} {chapter.number}: {getLocalizedChapterTitle(chapter.unit_id, chapter.title, lang)}</td>
+                    <td>{Math.round(chapter.mastery * 100)}%</td>
+                    <td>{chapter.evidence_count}</td>
+                    <td>{misconceptionLabel(chapter.misconception, lang, chapter.misconception_title) || gapText(chapter.prerequisite_gap) || '–'}</td>
+                    <td>{routeLabel(chapter.recommendation, lang)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
         <div className="dossier-history-section">
-          <h4>Observable Response History</h4>
-          <p className="subtext">
-            Transparent evidentiary basis for PRISM’s route hypothesis. Every diagnosis is explainable and grounded in these responses:
-          </p>
+          <h4>{x.historyTitle}</h4>
+          <p className="subtext">{x.historySub}</p>
 
           <div className="attempt-timeline">
             {detail.attempts.length === 0 ? (
-              <p className="empty-msg">No attempts recorded yet for this student.</p>
+              <p className="empty-msg">{x.noAttempts}</p>
             ) : (
               detail.attempts.map((att, idx) => (
                 <div key={att.id || idx} className={`attempt-item ${att.correct ? 'correct' : 'incorrect'}`}>
@@ -239,21 +286,23 @@ export function StudentDossierModal({ detail, lang, onClose }: StudentDossierMod
                     ) : (
                       <AlertCircle size={18} className="text-red" />
                     )}
-                    <span className="stage-tag">{att.stage}</span>
+                    <span className="stage-tag">
+                      {att.stage === 'test' ? t.test : att.stage === 'practice' ? t.practice : t.diagnostic}
+                    </span>
                   </div>
                   <div className="attempt-detail-col">
-                    <p className="attempt-prompt"><b>Q:</b> {att.prompt}</p>
+                    <p className="attempt-prompt"><b>Q:</b> {getLocalizedQuestionPrompt(att.question_id, att.prompt, lang)}</p>
                     <div className="attempt-answer-row">
-                      <span>Student selected: <b>{att.response}</b></span>
+                      <span>{x.studentSelected} <b>{getLocalizedOptionLabel(att.response, lang)}</b></span>
                       {!att.correct && (
-                        <span className="expected-ans">Expected: <b>{att.expected_answer}</b></span>
+                        <span className="expected-ans">{x.expected} <b>{getLocalizedOptionLabel(att.expected_answer, lang)}</b></span>
                       )}
                       {att.misconception && (
-                        <span className="miscon-pill">Triggered Rule: {att.misconception}</span>
+                        <span className="miscon-pill">{x.triggeredRule} {misconceptionLabel(att.misconception, lang)}</span>
                       )}
                     </div>
                     {att.explanation && (
-                      <small className="attempt-exp">💡 {att.explanation}</small>
+                      <small className="attempt-exp">💡 {getLocalizedExplanation(att.question_id, att.explanation, lang)}</small>
                     )}
                   </div>
                 </div>
@@ -265,9 +314,7 @@ export function StudentDossierModal({ detail, lang, onClose }: StudentDossierMod
         <div className="modal-footer">
           <div className="safeguard-badge">
             <Shield size={16} />
-            <span>
-              Safeguard: Non-permanent hypothesis. A single error cannot establish a label; teacher retains full discretion.
-            </span>
+            <span>{x.safeguard}</span>
           </div>
           <button className="btn-secondary" onClick={onClose}>{t.close}</button>
         </div>
@@ -281,22 +328,28 @@ interface PrintPlanModalProps {
   classCode: string;
   teacherName: string;
   learners?: LearnerSummary[];
+  /** The chapter being printed, or undefined when printing all of them. */
+  chapterLabel?: string;
+  lang: Language;
   onClose: () => void;
 }
 
-export function PrintPlanModal({ plans, classCode, teacherName, learners = [], onClose }: PrintPlanModalProps) {
+export function PrintPlanModal({ plans, classCode, teacherName, learners = [], chapterLabel, lang, onClose }: PrintPlanModalProps) {
+  const x = teacherText(lang);
   const learnerName = (code: string) => learners.find(l => l.code === code)?.name || code;
+  // Dismissed plans are the teacher's "no", so they do not belong on the record of what will happen.
+  const printable = plans.filter((plan) => plan.status !== 'rejected');
   return (
     <div className="modal-backdrop">
       <div className="modal-container print-modal">
         <div className="modal-header no-print">
           <div>
-            <span className="eyebrow">CBSE OFFICIAL FORMAT</span>
-            <h3>Classroom Intervention Briefing</h3>
+            <span className="eyebrow">{x.printEyebrow}</span>
+            <h3>{x.printTitle}</h3>
           </div>
           <div className="print-actions">
             <button className="btn-primary" onClick={() => window.print()}>
-              <Printer size={16} /> Print / Save as PDF
+              <Printer size={16} /> {x.printBtn}
             </button>
             <button className="icon-close" onClick={onClose}><X size={20} /></button>
           </div>
@@ -305,53 +358,53 @@ export function PrintPlanModal({ plans, classCode, teacherName, learners = [], o
         <div className="printable-document">
           <div className="cbse-doc-header">
             <div className="school-title">
-              <h2>CENTRAL BOARD OF SECONDARY EDUCATION</h2>
-              <h3>DIFFERENTIATED CLASSROOM INSTRUCTION PLAN · 2026–27</h3>
-              <p>NCERT Mathematics Class VIII · Rational Numbers: Equivalent Fractions</p>
+              <h2>{x.docOrg}</h2>
+              <h3>{x.docSub}</h3>
+              <p>{chapterLabel || x.allChaptersDoc}</p>
             </div>
             <div className="doc-meta-grid">
-              <div><b>Class / Section:</b> {classCode}</div>
-              <div><b>Subject Teacher:</b> {teacherName}</div>
-              <div><b>Date:</b> {new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
-              <div><b>Lesson Period:</b> 45 Minutes</div>
+              <div><b>{x.classSection}</b> {classCode}</div>
+              <div><b>{x.subjectTeacher}</b> {teacherName}</div>
+              <div><b>{x.dateLabel}</b> {new Date().toLocaleDateString(lang === 'hi' ? 'hi-IN' : lang === 'te' ? 'te-IN' : 'en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</div>
+              <div><b>{x.lessonPeriod}</b> {x.minutes45}</div>
             </div>
           </div>
 
           <table className="print-plan-table">
             <thead>
               <tr>
-                <th style={{ width: '18%' }}>Intervention Pod</th>
-                <th style={{ width: '20%' }}>Assigned Students</th>
-                <th style={{ width: '34%' }}>Prescribed Activity & Scaffolding</th>
-                <th style={{ width: '10%' }}>Duration</th>
-                <th style={{ width: '18%' }}>Target Outcome & Status</th>
+                <th style={{ width: '18%' }}>{x.thPod}</th>
+                <th style={{ width: '20%' }}>{x.thStudents}</th>
+                <th style={{ width: '34%' }}>{x.thActivity}</th>
+                <th style={{ width: '10%' }}>{x.thDuration}</th>
+                <th style={{ width: '18%' }}>{x.thOutcome}</th>
               </tr>
             </thead>
             <tbody>
-              {plans.map((plan) => (
+              {printable.map((plan) => (
                 <tr key={plan.id}>
                   <td>
-                    <b>{plan.barrier}</b>
+                    <b>{localisedPlanText(plan.barrier, lang)}</b>
                     <br />
-                    <small style={{ color: '#666' }}>Confidence: {plan.confidence}</small>
+                    <small style={{ color: '#666' }}>{routeLabel(plan.group_key, lang)}</small>
                   </td>
                   <td>
                     <b>{plan.student_codes.map(learnerName).join(', ')}</b>
                   </td>
                   <td>
-                    {plan.activity}
+                    {localisedPlanText(plan.activity, lang)}
                     {plan.teacher_notes && (
                       <p style={{ marginTop: '4px', fontStyle: 'italic', color: '#444' }}>
-                        Note: {plan.teacher_notes}
+                        {x.noteLabel} {plan.teacher_notes}
                       </p>
                     )}
                   </td>
-                  <td><b>{plan.duration}</b></td>
+                  <td><b>{localisedDuration(plan.duration, lang)}</b></td>
                   <td>
-                    {plan.outcome}
+                    {localisedPlanText(plan.outcome, lang)}
                     <br />
                     <span className={`status-tag ${plan.status}`}>
-                      [{plan.status.toUpperCase()}]
+                      [{plan.status === 'approved' ? x.statusApproved : plan.status === 'modified' ? x.statusModified : x.statusProposed}]
                     </span>
                   </td>
                 </tr>
@@ -362,60 +415,62 @@ export function PrintPlanModal({ plans, classCode, teacherName, learners = [], o
           <div className="print-signoff">
             <div className="signoff-box">
               <hr />
-              <span>Subject Teacher Signature</span>
+              <span>{x.sigTeacher}</span>
             </div>
             <div className="signoff-box">
               <hr />
-              <span>Head of Mathematics / Principal</span>
+              <span>{x.sigHead}</span>
             </div>
           </div>
+          <p style={{ marginTop: '14px', fontSize: '11px', color: '#666' }}>{x.disclaimer}</p>
         </div>
       </div>
     </div>
   );
 }
 
-export function LessonTimelineSchedule() {
+export function LessonTimelineSchedule({ lang }: { lang: Language }) {
+  const x = teacherText(lang);
   return (
     <div className="timeline-schedule-card">
       <div className="timeline-header">
         <Clock3 size={18} className="purple-text" />
         <div>
-          <h4>45-Minute Lesson Pacing & Pod Workflow</h4>
-          <p>How the Teacher Intervention Compiler divides classroom time dynamically:</p>
+          <h4>{x.tlTitle}</h4>
+          <p>{x.tlSub}</p>
         </div>
       </div>
 
       <div className="timeline-blocks">
         <div className="t-block phase-1" style={{ flex: 2 }}>
-          <span className="t-time">00 – 10 min</span>
-          <b>1. Whole-Class Concept Launch & Quick Diagnostic</b>
-          <small>Interactive check probes prerequisite readiness and equivalence.</small>
+          <span className="t-time">00 – 10</span>
+          <b>{x.tl1Title}</b>
+          <small>{x.tl1Desc}</small>
         </div>
         <div className="t-block phase-2" style={{ flex: 3 }}>
-          <span className="t-time">10 – 25 min</span>
-          <b>2. Differentiated Learning Pods (Interventions)</b>
-          <small>
-            Visual Support Pod (10m) · Foundation Pod (12m) · Guided Practice (12m) · Recipe Lab (15m)
-          </small>
+          <span className="t-time">10 – 25</span>
+          <b>{x.tl2Title}</b>
+          <small>{x.tl2Desc}</small>
         </div>
         <div className="t-block phase-3" style={{ flex: 2 }}>
-          <span className="t-time">25 – 35 min</span>
-          <b>3. Independent Transfer Verification</b>
-          <small>Students test transfer in a novel context; engine updates evidence live.</small>
+          <span className="t-time">25 – 35</span>
+          <b>{x.tl3Title}</b>
+          <small>{x.tl3Desc}</small>
         </div>
         <div className="t-block phase-4" style={{ flex: 2 }}>
-          <span className="t-time">35 – 45 min</span>
-          <b>4. Whole-Class Synthesis & Next Lesson Pacing</b>
-          <small>Teacher reviews updated evidence pulse and confirms readiness to progress.</small>
+          <span className="t-time">35 – 45</span>
+          <b>{x.tl4Title}</b>
+          <small>{x.tl4Desc}</small>
         </div>
       </div>
     </div>
   );
 }
 
-export function InviteStudentsModal({ classCode, onClose }: { classCode: string; onClose: () => void }) {
+export function InviteStudentsModal({ classCode, lang, onClose }: { classCode: string; lang: Language; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
+  const x = teacherText(lang);
+  const t = TRANSLATIONS[lang];
 
   const copyCode = () => {
     navigator.clipboard.writeText(classCode);
@@ -428,19 +483,19 @@ export function InviteStudentsModal({ classCode, onClose }: { classCode: string;
       <div className="modal-container invite-modal" style={{ maxWidth: '480px' }}>
         <div className="modal-header">
           <div>
-            <span className="eyebrow">REAL DATA ENROLLMENT</span>
-            <h3>Enroll Real Students</h3>
+            <span className="eyebrow">{x.inviteEyebrow}</span>
+            <h3>{x.inviteTitle}</h3>
           </div>
           <button className="icon-close" onClick={onClose}><X size={20} /></button>
         </div>
 
         <div style={{ padding: '20px 24px' }}>
           <p style={{ color: '#4b5563', fontSize: '14px', marginBottom: '16px' }}>
-            Share this official Classroom Join Code with your students. Real student submissions will automatically feed into your Teacher Intervention Compiler.
+            {x.inviteBody}
           </p>
 
           <div style={{ background: '#f5f3ff', border: '2px dashed #7c3aed', borderRadius: '12px', padding: '18px', textAlign: 'center', marginBottom: '20px' }}>
-            <span style={{ fontSize: '11px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>Your Classroom Code</span>
+            <span style={{ fontSize: '11px', color: '#6d28d9', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '1px' }}>{x.yourCode}</span>
             <div style={{ fontSize: '32px', fontWeight: 900, color: '#5b21b6', letterSpacing: '2px', margin: '6px 0' }}>{classCode}</div>
             <button
               type="button"
@@ -448,22 +503,22 @@ export function InviteStudentsModal({ classCode, onClose }: { classCode: string;
               style={{ marginTop: '8px', padding: '8px 16px', fontSize: '13px' }}
               onClick={copyCode}
             >
-              {copied ? <><Check size={16} /> Code Copied!</> : <><Copy size={16} /> Copy Join Code</>}
+              {copied ? <><Check size={16} /> {x.copied}</> : <><Copy size={16} /> {x.copyCode}</>}
             </button>
           </div>
 
           <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '14px' }}>
-            <h5 style={{ fontSize: '13px', color: '#1e293b', marginBottom: '8px' }}>How real students join:</h5>
+            <h5 style={{ fontSize: '13px', color: '#1e293b', marginBottom: '8px' }}>{x.howJoin}</h5>
             <ol style={{ fontSize: '12px', color: '#64748b', paddingLeft: '18px', lineHeight: '1.7' }}>
-              <li>Student registers with their email at <b>prism-classroom.onrender.com</b>.</li>
-              <li>Enters code <b>{classCode}</b> during registration or clicks "Join Classroom".</li>
-              <li>Completes diagnostic or practice tasks; their real data streams into your Control Room live!</li>
+              <li>{x.joinStep1}</li>
+              <li>{fill(x.joinStep2, { code: classCode })}</li>
+              <li>{x.joinStep3}</li>
             </ol>
           </div>
         </div>
 
         <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>Close</button>
+          <button className="btn-secondary" onClick={onClose}>{t.close}</button>
         </div>
       </div>
     </div>

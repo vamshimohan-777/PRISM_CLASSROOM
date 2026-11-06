@@ -1,11 +1,12 @@
 """Reproducible synthetic demo data. Run with `python -m app.seed`."""
 from .database import Base, engine, SessionLocal
 from .models import Classroom, Teacher, Student, Concept, Question, LearnerProgress, User, Attempt, Intervention
-from .engine import validate_graph, compile_groups
+from .engine import CONCEPT_GRAPH, validate_graph
+from .compiler import compile_classroom
 from .scoring import recompute_student
 from .curriculum import CBSE_CURRICULUM
 from .auth import hash_password
-from .catalog import CHAPTERS, QUESTION_BANK, misconception_tags_for
+from .catalog import CHAPTERS, PREREQUISITE_QUESTIONS, PREREQUISITE_SKILLS, QUESTION_BANK, misconception_tags_for
 
 CONCEPTS = [
  ("fraction-parts", "Fraction parts", "Identify numerator, denominator, sign, and equal parts of a rational number.", []),
@@ -48,11 +49,17 @@ def main():
    continue
   seen_concepts.add(cid)
   if not db.get(Concept,cid):
-   db.add(Concept(id=cid,name=chapter["title"],objective=chapter["summary"],grade=8,prerequisites=[]))
+   db.add(Concept(id=cid,name=chapter["title"],objective=chapter["summary"],grade=8,prerequisites=CONCEPT_GRAPH[cid]))
   for index,(stage,prompt,options,answer,explanation) in enumerate(QUESTION_BANK[chapter["id"]],start=1):
    question_id=f'{chapter["id"]}-{stage}-{index}'
    if not db.get(Question,question_id):
     db.add(Question(id=question_id,concept_id=chapter["concept"],stage=stage,difficulty=index,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map=misconception_tags_for(question_id),is_transfer=stage=="test"))
+ for cid,skill in PREREQUISITE_SKILLS.items():
+  if cid not in seen_concepts and not db.get(Concept,cid):
+   db.add(Concept(id=cid,name=skill["title"],objective=skill["objective"],grade=8,prerequisites=CONCEPT_GRAPH[cid]))
+ for qid,concept,prompt,options,answer,explanation,mapping in PREREQUISITE_QUESTIONS:
+  if not db.get(Question,qid):
+   db.add(Question(id=qid,concept_id=concept,stage="diagnostic",difficulty=1,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map=mapping,is_transfer=False))
  for qid,concept,stage,difficulty,prompt,options,answer,explanation,mapping in QUESTIONS:
   if not db.get(Question,qid): db.add(Question(id=qid,concept_id=concept,stage=stage,difficulty=difficulty,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map=mapping,is_transfer=stage=="test"))
  # Demo learners carry identity only. Their mastery, misconception label and
@@ -113,7 +120,6 @@ def seed_attempts(db):
    ("diag-magnitude", "1/3", True, "diagnostic", "seed-sub-kabir-2"),
    ("diag-simplify", "-18/12", False, "diagnostic", "seed-sub-kabir-3"),
    ("practice-guided", "5", False, "practice", "seed-sub-kabir-4"),
-   ("practice-standard", "-3/4 and 6/-8", True, "practice", "seed-sub-kabir-5"),
   ]),
   ("STU-EXTEND", [
    ("diag-equivalent", "2/4", True, "diagnostic", "seed-sub-meera-1"),
@@ -131,18 +137,10 @@ def seed_attempts(db):
     db.add(Attempt(student_id=stu.id, question_id=qid, submission_id=sub_id, response=resp, correct=corr, stage=stg))
 
 def compile_initial_interventions(db, classroom_id):
- records = db.query(Intervention).filter_by(classroom_id=classroom_id).all()
- if not records:
-  students = db.query(Student).filter_by(classroom_id=classroom_id).all()
-  profiles = []
-  for s in students:
-   p = db.query(LearnerProgress).filter_by(student_id=s.id, concept_id="equivalent-fractions").first()
-   if p:
-    p.code = s.code
-    profiles.append(p)
-  for plan in compile_groups(profiles):
-   ids = [db.query(Student).filter_by(code=c).first().id for c in plan.pop("students")]
-   db.add(Intervention(classroom_id=classroom_id, concept_id="equivalent-fractions", student_ids=ids, **plan))
+ if db.query(Intervention).filter_by(classroom_id=classroom_id).first():
+  return
+ for plan in compile_classroom(db, classroom_id):
+  db.add(Intervention(classroom_id=classroom_id, **plan))
 
 def reset_to_seed(db):
     """Return the classroom to its pristine demo state.

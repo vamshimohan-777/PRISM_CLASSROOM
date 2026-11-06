@@ -14,7 +14,7 @@
 | **Password** | `PrismDemo!2026` |
 | **Role** | Teacher |
 | **Persona** | Ms. Ananya — Class 8A CBSE |
-| **What you'll see** | Full teacher workspace: live evidence compiler, 4 differentiated intervention pods, student dossiers, lesson plan printer, invite-student flow |
+| **What you'll see** | Full teacher workspace: intervention compiler, 4 starting pods, student evidence records, printable briefing, invite-student flow |
 
 ---
 
@@ -26,7 +26,7 @@
 | **Email** | `student@prism.demo` |
 | **Password** | `PrismDemo!2026` |
 | **Misconception** | Denominator-Magnitude (believes 1/8 > 1/3 because 8 > 3) |
-| **Mastery** | 38% |
+| **Mastery** | 43% |
 | **Intervention** | Visual fraction bar workbench |
 
 ### 2. Diya Patel — Foundation Gap Route
@@ -34,8 +34,8 @@
 |-------|-------|
 | **Email** | `diya@prism.demo` |
 | **Password** | `PrismDemo!2026` |
-| **Misconception** | Fraction-Parts Gap (counts unequal regions as equal parts) |
-| **Mastery** | 27% |
+| **Misconception** | No label yet: a weak prerequisite answer routes Diya to Foundation |
+| **Mastery** | 46% |
 | **Intervention** | Foundation prerequisite scaffolding |
 
 ### 3. Kabir Verma — Guided Practice Route
@@ -44,7 +44,7 @@
 | **Email** | `kabir@prism.demo` |
 | **Password** | `PrismDemo!2026` |
 | **Misconception** | Unequal Operations (multiplies only numerator when finding equivalent fractions) |
-| **Mastery** | 54% |
+| **Mastery** | 46% |
 | **Intervention** | Scaffolded guided practice with multiplier grid |
 
 ### 4. Meera Iyer — Extension Route
@@ -53,7 +53,7 @@
 | **Email** | `meera@prism.demo` |
 | **Password** | `PrismDemo!2026` |
 | **Misconception** | None — high mastery learner |
-| **Mastery** | 88% |
+| **Mastery** | 84% |
 | **Intervention** | Independent extension: recipe scaling transfer task |
 
 ---
@@ -65,7 +65,7 @@
 | **Classroom Code** | `8A-CBSE` |
 | **Grade** | Class 8 |
 | **Board** | CBSE |
-| **Textbook** | NCERT Mathematics Class VIII (HMHE101) |
+| **Textbook** | Earlier 8-chapter NCERT Mathematics Class VIII book (HMHE101) |
 | **Active Chapter** | Rational Numbers (Ch 1) → Equivalent Fractions |
 
 ---
@@ -76,7 +76,7 @@ The **Engines Studio** tab is accessible to everyone — no account needed.
 
 | Engine | What it does | Example query |
 |--------|-------------|---------------|
-| 🔍 **Search Engine** | Full-text search across 8 chapters, 48 questions, 8 misconceptions, 5 interventions | `"equivalent fractions"`, `"denominator misconception"` |
+| 🔍 **Search Engine** | Keyword search across 8 chapters, 18 concepts, 48 questions, 28 misconceptions, 6 interventions | `"equivalent fractions"`, `"denominator misconception"` |
 | 💡 **Answer Engine** | Step-by-step NCERT solver with verification & misconception warnings | `"Solve: 3x + 5 = 20"`, `"simplify 18/24"`, `"25% of 500"` |
 | ✨ **Generative Engine** | Dynamic questions, personalised remediation, 45-min lesson plans, Indian transfer tasks | Select concept → click Generate |
 
@@ -92,9 +92,9 @@ The **Engines Studio** tab is accessible to everyone — no account needed.
    → Generate a question for "Linear Equations" at Challenge level
 
 3. Sign in as teacher@prism.demo / PrismDemo!2026
-   → See 4 auto-compiled intervention pods
-   → Click Aarav's dossier → review attempt timeline
-   → Approve an intervention plan
+   → See 4 compiled intervention pods
+   → Click Aarav's name → review his evidence record
+   → Approve an intervention plan, then press Recompile to see it kept
 
 4. Sign out → Sign in as student@prism.demo / PrismDemo!2026
    → Take a Diagnostic quiz on Rational Numbers

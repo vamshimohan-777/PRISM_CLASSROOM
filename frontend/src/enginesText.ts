@@ -64,6 +64,7 @@ export interface EnginesStrings {
   questionGenerator: string;
   remediationGuide: string;
   transferTasks: string;
+  lessonPlanTab: string;
   chapterConcept: string;
   stage: string;
   stageDiagnostic: string;
@@ -110,6 +111,14 @@ export interface EnginesStrings {
   optCubes: string;
   optQuadrilaterals: string;
   optComparing: string;
+  optData: string;
+  optGeometry: string;
+  generating: string;
+  generateQuestionBtn: string;
+  compiling: string;
+  generateLessonBtn: string;
+  confidenceLabel: string;
+  notSolved: string;
   conceptEquivalent: string;
   miscDenominator: string;
   miscAdditive: string;
@@ -177,6 +186,7 @@ export const ENGINES_TEXT: Record<Language, EnginesStrings> = {
     questionGenerator: 'Dynamic Question Generator',
     remediationGuide: 'Personalized Remediation Guide',
     transferTasks: 'Indian Contextual Transfer Tasks',
+    lessonPlanTab: '45-Min Differentiated Lesson Plan',
     chapterConcept: 'Chapter / Concept',
     stage: 'Stage',
     stageDiagnostic: 'Diagnostic (Initial Probe)',
@@ -222,6 +232,14 @@ export const ENGINES_TEXT: Record<Language, EnginesStrings> = {
     optCubes: 'Cubes & Cube Roots',
     optQuadrilaterals: 'Understanding Quadrilaterals',
     optComparing: 'Comparing Quantities & Percentages',
+    optData: 'Data Handling & Probability',
+    optGeometry: 'Practical Geometry',
+    generating: 'Generating…',
+    generateQuestionBtn: 'Generate New Question',
+    compiling: 'Compiling…',
+    generateLessonBtn: 'Generate Differentiated Lesson Plan',
+    confidenceLabel: 'Solver confidence',
+    notSolved: 'Not solved',
     conceptEquivalent: 'Equivalent Fractions & Rational Numbers',
     miscDenominator: 'Denominator-Magnitude (1/8 > 1/3)',
     miscAdditive: 'Additive Equivalence Bias (+1/+1)',
@@ -288,6 +306,7 @@ export const ENGINES_TEXT: Record<Language, EnginesStrings> = {
     questionGenerator: 'गतिशील प्रश्न जनरेटर',
     remediationGuide: 'व्यक्तिगत उपचारात्मक मार्गदर्शिका',
     transferTasks: 'भारतीय संदर्भ आधारित अनुप्रयोग कार्य',
+    lessonPlanTab: '45 मिनट की विभेदित पाठ योजना',
     chapterConcept: 'अध्याय / संकल्पना',
     stage: 'चरण',
     stageDiagnostic: 'निदानात्मक (प्रारंभिक जाँच)',
@@ -333,6 +352,14 @@ export const ENGINES_TEXT: Record<Language, EnginesStrings> = {
     optCubes: 'घन और घनमूल',
     optQuadrilaterals: 'चतुर्भुजों की समझ',
     optComparing: 'राशियों की तुलना और प्रतिशत',
+    optData: 'आँकड़ों का प्रबंधन और प्रायिकता',
+    optGeometry: 'प्रायोगिक ज्यामिति',
+    generating: 'तैयार हो रहा है…',
+    generateQuestionBtn: 'नया प्रश्न बनाएँ',
+    compiling: 'संकलित हो रहा है…',
+    generateLessonBtn: 'विभेदित पाठ योजना बनाएँ',
+    confidenceLabel: 'हल का भरोसा',
+    notSolved: 'हल नहीं हुआ',
     conceptEquivalent: 'तुल्य भिन्न और परिमेय संख्याएँ',
     miscDenominator: 'हर-परिमाण भ्रांति (1/8 > 1/3)',
     miscAdditive: 'योगात्मक तुल्यता भ्रांति (+1/+1)',
@@ -399,6 +426,7 @@ export const ENGINES_TEXT: Record<Language, EnginesStrings> = {
     questionGenerator: 'డైనమిక్ ప్రశ్న జనరేటర్',
     remediationGuide: 'వ్యక్తిగత నివారణ మార్గదర్శిని',
     transferTasks: 'భారతీయ సందర్భ అనువర్తన పనులు',
+    lessonPlanTab: '45 నిమిషాల విభిన్న పాఠ ప్రణాళిక',
     chapterConcept: 'అధ్యాయం / భావన',
     stage: 'దశ',
     stageDiagnostic: 'నిర్ధారణ (ప్రారంభ పరిశీలన)',
@@ -444,6 +472,14 @@ export const ENGINES_TEXT: Record<Language, EnginesStrings> = {
     optCubes: 'ఘనాలు & ఘనమూలాలు',
     optQuadrilaterals: 'చతుర్భుజాల అవగాహన',
     optComparing: 'రాశుల పోలిక & శాతాలు',
+    optData: 'దత్తాంశ నిర్వహణ & సంభావ్యత',
+    optGeometry: 'ప్రాయోగిక జ్యామితి',
+    generating: 'తయారవుతోంది…',
+    generateQuestionBtn: 'కొత్త ప్రశ్న రూపొందించండి',
+    compiling: 'కూర్చుతోంది…',
+    generateLessonBtn: 'విభిన్న పాఠ ప్రణాళిక రూపొందించండి',
+    confidenceLabel: 'సాధన నమ్మకం',
+    notSolved: 'సాధించబడలేదు',
     conceptEquivalent: 'సమాన భిన్నాలు & అకరణీయ సంఖ్యలు',
     miscDenominator: 'హారం-పరిమాణ అపోహ (1/8 > 1/3)',
     miscAdditive: 'సంకలన సమానత్వ అపోహ (+1/+1)',

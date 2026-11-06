@@ -1,4 +1,4 @@
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
   CheckCircle2,
@@ -23,6 +23,7 @@ import {
   type User,
   type WorkspaceData,
   type StudentDetail,
+  type Persona,
 } from './api';
 import { Language, TRANSLATIONS } from './translations';
 import {
@@ -49,12 +50,43 @@ import {
   getLocalizedOptionLabel,
   getLocalizedExplanation,
 } from './localization';
+import {
+  fill,
+  localisedDuration,
+  localisedPlanText,
+  misconceptionLabel,
+  prerequisiteName,
+  prerequisiteRemedy,
+  reasonForRoute,
+  routeLabel,
+  teacherText,
+} from './teacherText';
 
 export type { ActiveTab };
 
 type Session = Auth;
 const sessionKey = 'prism-session';
 const offlineQueueKey = 'prism-offline-attempts';
+const langKey = 'prism-language';
+const cacheKey = (name: string) => `prism-cache:${name}`;
+
+/** Read-through cache, so already-seen activities still open with no connection. */
+function remember<T>(name: string, value: T): T {
+  try {
+    localStorage.setItem(cacheKey(name), JSON.stringify(value));
+  } catch {
+    /* A full or blocked store only costs the offline convenience. */
+  }
+  return value;
+}
+
+function recall<T>(name: string): T | null {
+  try {
+    return JSON.parse(localStorage.getItem(cacheKey(name)) || 'null');
+  } catch {
+    return null;
+  }
+}
 
 interface QueuedAttempt {
   question_id: string;
@@ -89,6 +121,8 @@ function Topbar({
   queuedCount,
   onSyncQueue,
   onSignOut,
+  personas,
+  onSelectPersona,
 }: {
   user: User;
   lang: Language;
@@ -100,8 +134,11 @@ function Topbar({
   queuedCount: number;
   onSyncQueue: () => void;
   onSignOut: () => void;
+  personas: Persona[];
+  onSelectPersona: (email: string) => void;
 }) {
   const t = TRANSLATIONS[lang];
+  const x = teacherText(lang);
 
   return (
     <header className="topbar">
@@ -182,6 +219,23 @@ function Topbar({
             </button>
           </div>
 
+          {personas.length > 0 && (
+            <select
+              className="persona-switcher"
+              aria-label={x.demoPersona}
+              value={user.email}
+              onChange={(e) => onSelectPersona(e.target.value)}
+              style={{ fontSize: '12px', padding: '5px 6px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', maxWidth: '170px' }}
+            >
+              {!personas.some((persona) => persona.email === user.email) && <option value={user.email}>{user.name}</option>}
+              {personas.map((persona) => (
+                <option key={persona.id} value={persona.email}>
+                  {persona.name} · {routeLabel(persona.route, lang)}
+                </option>
+              ))}
+            </select>
+          )}
+
           {/* Offline Queue Indicator */}
           <button
             type="button"
@@ -201,7 +255,7 @@ function Topbar({
               style={{ padding: '5px 10px', fontSize: '11px' }}
               onClick={onSyncQueue}
             >
-              Sync ({queuedCount})
+              {x.syncNow} ({queuedCount})
             </button>
           )}
 
@@ -224,12 +278,16 @@ function AuthScreen({
   onLangChange,
   activeTab,
   onTabChange,
+  personas,
+  onSelectPersona,
 }: {
   onAuthenticated: (auth: Session) => void;
   lang: Language;
   onLangChange: (lang: Language) => void;
   activeTab: ActiveTab;
   onTabChange: (tab: ActiveTab) => void;
+  personas: Persona[];
+  onSelectPersona: (email: string) => void;
 }) {
   const [mode, setMode] = useState<'sign-in' | 'register'>('sign-in');
   const [role, setRole] = useState<'student' | 'teacher'>('student');
@@ -240,6 +298,7 @@ function AuthScreen({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const t = TRANSLATIONS[lang];
+  const x = teacherText(lang);
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -249,7 +308,7 @@ function AuthScreen({
       const result =
         mode === 'sign-in'
           ? await api.login(email, password)
-          : await api.register(name, email, password, role);
+          : await api.register(name, email, password, role, role === 'student' ? classroomCode.trim() : undefined);
       localStorage.setItem(sessionKey, JSON.stringify(result));
       onAuthenticated(result);
     } catch (err) {
@@ -411,6 +470,16 @@ function AuthScreen({
                   <Users /> {t.roleTeacher}
                 </button>
               </div>
+              {role === 'student' && (
+                <label>
+                  {x.classCodeLabel}
+                  <input
+                    value={classroomCode}
+                    onChange={(e) => setClassroomCode(e.target.value.toUpperCase())}
+                    placeholder={x.classCodePlaceholder}
+                  />
+                </label>
+              )}
             </>
           )}
 
@@ -444,6 +513,24 @@ function AuthScreen({
             {busy ? '…' : mode === 'sign-in' ? t.signInBtn : t.createAccountBtn}{' '}
             <ArrowRight size={17} />
           </button>
+
+          {personas.length > 0 && (
+            <label>
+              {x.demoPersona}
+              <select
+                value=""
+                onChange={(e) => e.target.value && onSelectPersona(e.target.value)}
+                aria-label={x.demoPersona}
+              >
+                <option value="">{x.switchPersona}</option>
+                {personas.map((persona) => (
+                  <option key={persona.id} value={persona.email}>
+                    {persona.name} · {routeLabel(persona.route, lang)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </form>
       </section>
     </main>
@@ -460,6 +547,7 @@ function StudentHome({
   isOffline,
   onQueueAttempt,
   onSignOut,
+  syncVersion,
 }: {
   user: User;
   token: string;
@@ -467,6 +555,7 @@ function StudentHome({
   isOffline: boolean;
   onQueueAttempt: (item: QueuedAttempt) => void;
   onSignOut: () => void;
+  syncVersion: number;
 }) {
   const [units, setUnits] = useState<Unit[]>([]);
   const [progress, setProgress] = useState<Progress[]>([]);
@@ -477,22 +566,35 @@ function StudentHome({
   const [answer, setAnswer] = useState('');
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
-  const [lastReason, setLastReason] = useState('');
+  const [lastRoute, setLastRoute] = useState('');
+  const [lastEngineReason, setLastEngineReason] = useState('');
   const [showCelebration, setShowCelebration] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
+  const [notice, setNotice] = useState('');
   const t = TRANSLATIONS[lang];
+  const x = teacherText(lang);
 
   const load = () =>
     Promise.all([api.units(), api.progress(token)])
       .then(([catalogue, profile]) => {
-        setUnits(catalogue);
-        setProgress(profile);
+        setUnits(remember('units', catalogue));
+        setProgress(remember(`progress:${user.id}`, profile));
+        setError('');
       })
-      .catch((e) => setError(e.message));
+      .catch((e) => {
+        const cachedUnits = recall<Unit[]>('units');
+        if (cachedUnits) {
+          setUnits(cachedUnits);
+          setProgress(recall<Progress[]>(`progress:${user.id}`) || []);
+        } else {
+          setError(e.message);
+        }
+      });
 
   useEffect(() => {
     load();
-  }, [token]);
+    // syncVersion: queued answers just reached the server, so scores have changed.
+  }, [token, syncVersion]);
 
   const start = async (unit: Unit, nextStage: 'diagnostic' | 'practice' | 'test' = 'diagnostic') => {
     setError('');
@@ -504,9 +606,15 @@ function StudentHome({
     setStage(nextStage);
     try {
       const qList = await api.questions(unit.id, nextStage, token);
-      setQuestions(qList);
+      setQuestions(remember(`questions:${unit.id}:${nextStage}`, qList));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to load activity');
+      const cached = recall<Question[]>(`questions:${unit.id}:${nextStage}`);
+      if (cached) {
+        setQuestions(cached);
+      } else {
+        setQuestions([]);
+        setError(e instanceof Error ? e.message : 'Unable to load activity');
+      }
     }
   };
 
@@ -526,7 +634,8 @@ function StudentHome({
         unit_id: selected.id,
         timestamp: new Date().toISOString(),
       });
-      setFeedback(`⚡ Saved in offline queue! Response will sync when connection is active.`);
+      setLastRoute('');
+      setFeedback(`⚡ ${x.queuedOffline}`);
       return;
     }
 
@@ -536,9 +645,10 @@ function StudentHome({
         token
       );
       setFeedback(
-        `${result.correct ? t.correct : t.keepGoing}${getLocalizedExplanation(question.id, result.feedback, lang)}`
+        `${result.correct ? t.correct : t.keepGoing}${getLocalizedExplanation(question.id, result.explanation || result.feedback, lang)}`
       );
-      setLastReason(result.reason);
+      setLastRoute(result.route || result.profile?.recommendation || '');
+      setLastEngineReason(result.reason);
 
       if (stage === 'test' && result.correct) {
         setShowCelebration(true);
@@ -556,12 +666,31 @@ function StudentHome({
         unit_id: selected.id,
         timestamp: new Date().toISOString(),
       });
-      setFeedback('⚡ Network interrupted: response queued locally for automatic sync.');
+      setLastRoute('');
+      setFeedback(`⚡ ${x.queuedNetwork}`);
     }
   };
 
   const currentProgress = selected && progress.find((item) => item.unit_id === selected.id);
-  const route = currentProgress?.recommendation || 'guided-practice';
+  const route = currentProgress?.recommendation || 'diagnostic';
+  const isFractionChapter = selected?.id === 'rational-numbers';
+  const barrierLabel = misconceptionLabel(currentProgress?.misconception, lang, currentProgress?.misconception_title);
+  const shownReason = lastRoute ? (lang === 'en' ? lastEngineReason : reasonForRoute(lastRoute, x)) : '';
+  const genericRoute: Record<string, { banner: string; text: string; tone: string }> = {
+    foundation: { banner: x.routeFoundationGeneric, text: x.routeFoundationText, tone: 'foundation' },
+    'visual-support': { banner: x.routeVisualGeneric, text: x.routeVisualText, tone: 'visual' },
+    'guided-practice': { banner: x.routeGuidedGeneric, text: x.routeGuidedText, tone: 'guided' },
+    extension: { banner: x.routeExtensionGeneric, text: x.routeExtensionText, tone: 'extension' },
+    test: { banner: x.routeTest, text: x.routeTestText, tone: 'extension' },
+    'follow-up': { banner: x.routeFollowUp, text: x.routeFollowUpText, tone: 'guided' },
+  };
+  const panel = genericRoute[route];
+  const gap = currentProgress?.prerequisite_gap;
+  const gapName = gap ? prerequisiteName(gap.concept_id, lang, gap.title) : '';
+  const gapRemedy = gap ? prerequisiteRemedy(gap.concept_id, lang, gap.remedy) : '';
+  // Fraction tools only make sense in the fraction chapter; follow-up and transfer
+  // routes have no tool in any chapter.
+  const usesFractionTool = isFractionChapter && ['foundation', 'visual-support', 'guided-practice', 'extension'].includes(route);
 
   if (selected) {
     return (
@@ -596,15 +725,19 @@ function StudentHome({
 
           <div>
             {/* ADAPT: Differentiated Learning Pod & Interactive Tools */}
-            {stage === 'practice' && (
+            {stage === 'practice' && usesFractionTool && (
               <div className="adaptive-route-container">
                 {route === 'visual-support' && (
                   <div className="adaptive-route-banner visual">
                     <div className="route-badge-row">
                       <Sparkles size={14} /> {t.visualSupportBanner}
                     </div>
-                    <h3>Targeted Visual Workbench</h3>
-                    <p>{t.visualSupportExplanation}</p>
+                    <h3>{x.visualTitle}</h3>
+                    <p>
+                      {currentProgress?.misconception && currentProgress.misconception !== 'denominator-magnitude'
+                        ? fill(x.patternExplanation, { label: barrierLabel })
+                        : t.visualSupportExplanation}
+                    </p>
                     <VisualFractionBarWorkbench lang={lang} />
                   </div>
                 )}
@@ -614,8 +747,11 @@ function StudentHome({
                     <div className="route-badge-row">
                       <Sparkles size={14} /> {t.foundationBanner}
                     </div>
-                    <h3>Prerequisite Partitioning Tool</h3>
+                    <h3>{x.foundationTitle}</h3>
                     <p>{t.foundationExplanation}</p>
+                    {gap && (
+                      <p><b>{x.weakPrerequisite}</b> {gapName}. {gapRemedy}</p>
+                    )}
                     <FoundationStripWorkbench lang={lang} />
                   </div>
                 )}
@@ -625,7 +761,7 @@ function StudentHome({
                     <div className="route-badge-row">
                       <Sparkles size={14} /> {t.guidedPracticeBanner}
                     </div>
-                    <h3>Scaffolded Multiplier Guide</h3>
+                    <h3>{x.guidedTitle}</h3>
                     <p>{t.guidedPracticeExplanation}</p>
                     <GuidedPracticeWorkbench lang={lang} />
                   </div>
@@ -636,11 +772,31 @@ function StudentHome({
                     <div className="route-badge-row">
                       <Sparkles size={14} /> {t.extensionBanner}
                     </div>
-                    <h3>Kitchen Lab Proportion Challenge</h3>
+                    <h3>{x.extensionTitle}</h3>
                     <p>{t.extensionExplanation}</p>
                     <ExtensionRecipeWorkbench lang={lang} />
                   </div>
                 )}
+              </div>
+            )}
+
+            {stage === 'practice' && !usesFractionTool && panel && (
+              <div className="adaptive-route-container">
+                <div className={`adaptive-route-banner ${panel.tone}`}>
+                  <div className="route-badge-row">
+                    <Sparkles size={14} /> {panel.banner}
+                  </div>
+                  {barrierLabel && (
+                    <p><b>{x.patternSeen}</b> {barrierLabel}</p>
+                  )}
+                  {gap && (
+                    <p><b>{x.weakPrerequisite}</b> {gapName}</p>
+                  )}
+                  <p>{panel.text}</p>
+                  {(gapRemedy || currentProgress?.misconception_remedy) && (
+                    <p><b>{x.whatToTry}</b> {gapRemedy || currentProgress?.misconception_remedy}</p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -679,9 +835,9 @@ function StudentHome({
                   {feedback ? (
                     <div className="feedback">
                       <p>{feedback}</p>
-                      {lastReason && (
+                      {shownReason && (
                         <p style={{ fontSize: '12px', color: '#047857' }}>
-                          <b>{t.diagnosticEngineNote}</b> {lastReason}
+                          <b>{t.diagnosticEngineNote}</b> {shownReason}
                         </p>
                       )}
                       <button
@@ -749,14 +905,30 @@ function StudentHome({
                   marginTop: '10px',
                 }}
               >
-                <b>{t.identifiedBarrier}</b> {currentProgress.misconception}
+                <b>{t.identifiedBarrier}</b> {barrierLabel}
               </div>
             )}
 
             <div className="stage-list">
-              <span className={stage === 'diagnostic' ? 'current' : ''}>1. {t.diagnostic}</span>
-              <span className={stage === 'practice' ? 'current' : ''}>2. {t.practice}</span>
-              <span className={stage === 'test' ? 'current' : ''}>3. {t.test}</span>
+              {(['diagnostic', 'practice', 'test'] as const).map((item, position) => (
+                <span
+                  key={item}
+                  role="button"
+                  tabIndex={0}
+                  title={x.stageJump}
+                  style={{ cursor: 'pointer' }}
+                  className={stage === item ? 'current' : ''}
+                  onClick={() => start(selected, item)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      start(selected, item);
+                    }
+                  }}
+                >
+                  {position + 1}. {item === 'diagnostic' ? t.diagnostic : item === 'practice' ? t.practice : t.test}
+                </span>
+              ))}
             </div>
           </aside>
         </section>
@@ -813,6 +985,7 @@ function StudentHome({
       </section>
 
       {error && <div className="page-error">{error}</div>}
+      {notice && <div className="feedback" role="status"><p>{notice}</p></div>}
 
       <section className="catalogue-head">
         <div>
@@ -858,7 +1031,7 @@ function StudentHome({
           lang={lang}
           onJoin={async (code) => {
             await api.joinClassroom(code, token);
-            alert(`Enrolled into classroom ${code}! Your responses now stream to your teacher.`);
+            setNotice(fill(x.joined, { code }));
             load();
           }}
           onClose={() => setShowJoinModal(false)}
@@ -889,7 +1062,10 @@ function TeacherHome({
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [recompiling, setRecompiling] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [chapterFilter, setChapterFilter] = useState<string>('all');
   const t = TRANSLATIONS[lang];
+  const x = teacherText(lang);
 
   const loadWorkspace = () =>
     api
@@ -960,13 +1136,25 @@ function TeacherHome({
     try {
       await api.recompileInterventions(token);
       await loadWorkspace();
-      alert('⚡ Intervention pods recompiled successfully from latest live student evidence!');
+      setNotice(x.recompileDone);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to recompile interventions');
     } finally {
       setRecompiling(false);
     }
   };
+
+  const learnerName = (code: string) => data?.learners.find((l) => l.code === code)?.name || code;
+  const allPlans = data?.interventions || [];
+  const chapterTabs = Array.from(
+    new Map(allPlans.filter((plan) => plan.unit_id).map((plan) => [plan.unit_id as string, plan])).values()
+  );
+  const visiblePlans = chapterFilter === 'all' ? allPlans : allPlans.filter((plan) => plan.unit_id === chapterFilter);
+  const statusLabel = (status: Plan['status']) =>
+    status === 'approved' ? x.statusApproved : status === 'modified' ? x.statusModified : status === 'rejected' ? x.statusRejected : x.statusProposed;
+  const confidenceLabel = (level: string) =>
+    level === 'high' ? x.confHigh : level === 'review' ? x.confReview : x.confModerate;
+  const activeChapter = chapterTabs.find((plan) => plan.unit_id === chapterFilter);
 
   return (
     <main className="workspace">
@@ -1013,6 +1201,7 @@ function TeacherHome({
       </section>
 
       {error && <div className="page-error">{error}</div>}
+      {notice && <div className="feedback" role="status"><p>{notice}</p></div>}
 
       {/* Professional Metrics */}
       <section className="metric-grid professional">
@@ -1034,7 +1223,7 @@ function TeacherHome({
       </section>
 
       {/* 45-Minute Lesson Timeline */}
-      <LessonTimelineSchedule />
+      <LessonTimelineSchedule lang={lang} />
 
       {/* Teacher Columns: Intervention Compiler & Learner Pulse */}
       <section className="teacher-columns">
@@ -1048,12 +1237,36 @@ function TeacherHome({
             <span className="badge-pill purple">{t.decisionSupportActive}</span>
           </div>
 
-          {data?.interventions && data.interventions.length > 0 ? (
-            data.interventions.map((plan) => (
+          {chapterTabs.length > 1 && (
+            <div className="student-pill-list" style={{ marginBottom: '12px' }}>
+              <button
+                type="button"
+                className={`student-select-pill ${chapterFilter === 'all' ? 'assigned' : 'unassigned'}`}
+                onClick={() => setChapterFilter('all')}
+              >
+                {x.allChapters}
+              </button>
+              {chapterTabs.map((plan) => (
+                <button
+                  type="button"
+                  key={plan.unit_id}
+                  className={`student-select-pill ${chapterFilter === plan.unit_id ? 'assigned' : 'unassigned'}`}
+                  onClick={() => setChapterFilter(plan.unit_id as string)}
+                >
+                  {x.chapterShort} {plan.chapter_number}: {getLocalizedChapterTitle(plan.unit_id as string, plan.chapter_title || '', lang)}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!data ? (
+            <p>{t.loadingInterventions}</p>
+          ) : visiblePlans.length > 0 ? (
+            visiblePlans.map((plan) => (
               <section key={plan.id} className={`plan-card ${plan.status}`}>
                 <div className="plan-card-header">
                   <span className={`badge-pill ${plan.confidence === 'high' ? 'green' : 'gold'}`}>
-                    {plan.confidence.toUpperCase()} CONFIDENCE
+                    {x.confidence}: {confidenceLabel(plan.confidence)}
                   </span>
                   <span
                     className={`badge-pill ${
@@ -1066,12 +1279,15 @@ function TeacherHome({
                         : 'gold'
                     }`}
                   >
-                    {plan.status.toUpperCase()}
+                    {statusLabel(plan.status)}
                   </span>
                 </div>
 
-                <h3>{plan.barrier}</h3>
-                <p>{plan.evidence}</p>
+                <span className="eyebrow">
+                  {x.chapterShort} {plan.chapter_number} · {routeLabel(plan.group_key, lang)}
+                </span>
+                <h3>{localisedPlanText(plan.barrier, lang)}</h3>
+                <p>{fill(x.podEvidence, { n: plan.student_codes.length })}</p>
 
                 <div className="plan-info">
                   <span>
@@ -1084,22 +1300,35 @@ function TeacherHome({
                           className="badge-pill purple"
                           style={{ cursor: 'pointer', border: 'none' }}
                           onClick={() => handleInspectStudent(c)}
-                          title="Click to inspect this learner's dossier"
+                          title={c}
                         >
-                          {c}
+                          {learnerName(c)}
                         </button>
                       ))}
                     </div>
                   </span>
                   <span>
                     <b>{t.suggestedActivity}</b>
-                    {plan.activity}
+                    {localisedPlanText(plan.activity, lang)}
                   </span>
                   <span>
                     <b>{t.timeAllocation}</b>
-                    {plan.duration}
+                    {localisedDuration(plan.duration, lang)}
                   </span>
                 </div>
+
+                {((plan.suggested_add?.length || 0) > 0 || (plan.suggested_remove?.length || 0) > 0) && (
+                  <div className="plan-notes-banner" role="note">
+                    <b>{x.engineSuggests}</b>{' '}
+                    {(plan.suggested_add?.length || 0) > 0 && (
+                      <span>{x.suggestAdd}: {plan.suggested_add?.map(learnerName).join(', ')}. </span>
+                    )}
+                    {(plan.suggested_remove?.length || 0) > 0 && (
+                      <span>{x.suggestRemove}: {plan.suggested_remove?.map(learnerName).join(', ')}. </span>
+                    )}
+                    <small style={{ display: 'block', marginTop: '4px' }}>{x.suggestHint}</small>
+                  </div>
+                )}
 
                 {plan.teacher_notes && (
                   <div className="plan-notes-banner">
@@ -1134,7 +1363,7 @@ function TeacherHome({
               </section>
             ))
           ) : (
-            <p>{t.loadingInterventions}</p>
+            <p>{x.noPlans}</p>
           )}
         </article>
 
@@ -1142,7 +1371,7 @@ function TeacherHome({
         <article className="teacher-panel learner-panel">
           <div className="panel-title">
             <div>
-              <span className="eyebrow">CLASSROOM EVIDENCE PULSE</span>
+              <span className="eyebrow">{x.evidencePulse}</span>
               <h2>{t.currentClassView}</h2>
             </div>
             <span className="badge-pill teal">{t.clickToInspect}</span>
@@ -1153,13 +1382,14 @@ function TeacherHome({
               <div
                 key={learner.code}
                 onClick={() => handleInspectStudent(learner.code)}
-                title="Click to view detailed Learner Evidence Dossier"
+                title={x.dossierEyebrow}
               >
                 <span className="learner-avatar">{learner.name.slice(0, 1)}</span>
                 <div>
                   <b>{learner.name}</b>
                   <small>
-                    {learner.code} · {learner.evidence_count} {t.evidencePoints}
+                    {learner.focus_chapter_number ? `${x.chapterShort} ${learner.focus_chapter_number} · ` : ''}
+                    {learner.evidence_count} {t.evidencePoints}
                   </small>
                   {learner.misconception && (
                     <span
@@ -1174,7 +1404,23 @@ function TeacherHome({
                         marginTop: '2px',
                       }}
                     >
-                      {learner.misconception}
+                      {misconceptionLabel(learner.misconception, lang, learner.misconception_title)}
+                    </span>
+                  )}
+                  {!learner.misconception && learner.prerequisite_gap && (
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        background: '#fff7ed',
+                        color: '#9a3412',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        padding: '1px 5px',
+                        borderRadius: '4px',
+                        marginTop: '2px',
+                      }}
+                    >
+                      {x.weakPrerequisite} {prerequisiteName(learner.prerequisite_gap.concept_id, lang, learner.prerequisite_gap.title)}
                     </span>
                   )}
                 </div>
@@ -1211,10 +1457,18 @@ function TeacherHome({
       {/* Printable CBSE Lesson Plan Modal */}
       {showPrintModal && data && (
         <PrintPlanModal
-          plans={data.interventions}
+          plans={visiblePlans}
           classCode={data.class_code}
           teacherName={data.teacher_name || user.name}
           learners={data.learners}
+          lang={lang}
+          chapterLabel={
+            activeChapter
+              ? `${x.chapterShort} ${activeChapter.chapter_number}: ${getLocalizedChapterTitle(activeChapter.unit_id as string, activeChapter.chapter_title || '', lang)}`
+              : chapterTabs.length === 1
+              ? `${x.chapterShort} ${chapterTabs[0].chapter_number}: ${getLocalizedChapterTitle(chapterTabs[0].unit_id as string, chapterTabs[0].chapter_title || '', lang)}`
+              : undefined
+          }
           onClose={() => setShowPrintModal(false)}
         />
       )}
@@ -1223,6 +1477,7 @@ function TeacherHome({
       {showInviteModal && data && (
         <InviteStudentsModal
           classCode={data.class_code}
+          lang={lang}
           onClose={() => setShowInviteModal(false)}
         />
       )}
@@ -1373,16 +1628,76 @@ export default function App() {
   useEffect(() => {
     applyPageMeta(activeTab);
   }, [activeTab]);
-  const [lang, setLang] = useState<Language>('en');
-  const [isOffline, setIsOffline] = useState(false);
-  const [offlineQueue, setOfflineQueue] = useState<QueuedAttempt[]>(() => {
+  const [lang, setLangState] = useState<Language>(() => {
     try {
-      return JSON.parse(localStorage.getItem(offlineQueueKey) || '[]');
+      const saved = localStorage.getItem(langKey);
+      return saved === 'hi' || saved === 'te' ? saved : 'en';
     } catch {
-      return [];
+      return 'en';
     }
   });
-  const [showTour, setShowTour] = useState(false);
+  const setLang = useCallback((next: Language) => {
+    setLangState(next);
+    try {
+      localStorage.setItem(langKey, next);
+    } catch {
+      /* Remembering the language is a convenience only. */
+    }
+  }, []);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+  }, [lang]);
+
+  // Offline is either real (the browser lost the network) or chosen, so a teacher
+  // can demonstrate the behaviour without unplugging anything.
+  const [manualOffline, setManualOffline] = useState(false);
+  const [networkDown, setNetworkDown] = useState(() => typeof navigator !== 'undefined' && navigator.onLine === false);
+  useEffect(() => {
+    const goOffline = () => setNetworkDown(true);
+    const goOnline = () => setNetworkDown(false);
+    window.addEventListener('offline', goOffline);
+    window.addEventListener('online', goOnline);
+    return () => {
+      window.removeEventListener('offline', goOffline);
+      window.removeEventListener('online', goOnline);
+    };
+  }, []);
+  const isOffline = manualOffline || networkDown;
+
+  // The queue belongs to one account. Classroom devices are shared, and one shared
+  // queue would submit a previous learner's answers under the next learner's name.
+  const userId = session?.user.id;
+  const queueKey = userId ? `${offlineQueueKey}:${userId}` : '';
+  const [offlineQueue, setOfflineQueue] = useState<QueuedAttempt[]>([]);
+  useEffect(() => {
+    if (!queueKey) {
+      setOfflineQueue([]);
+      return;
+    }
+    try {
+      setOfflineQueue(JSON.parse(localStorage.getItem(queueKey) || '[]'));
+    } catch {
+      setOfflineQueue([]);
+    }
+  }, [queueKey]);
+  const saveQueue = useCallback(
+    (items: QueuedAttempt[]) => {
+      if (!queueKey) return;
+      if (items.length) localStorage.setItem(queueKey, JSON.stringify(items));
+      else localStorage.removeItem(queueKey);
+    },
+    [queueKey]
+  );
+
+  const [syncNotice, setSyncNotice] = useState('');
+  const [syncVersion, setSyncVersion] = useState(0);
+  const syncing = useRef(false);
+
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  useEffect(() => {
+    // Returns 404 when PRISM_DEMO_MODE=0, in which case no switcher is offered.
+    api.personas().then(setPersonas).catch(() => setPersonas([]));
+  }, []);
 
   const signOut = () => {
     localStorage.removeItem(sessionKey);
@@ -1402,15 +1717,25 @@ export default function App() {
   };
 
   const handleQueueAttempt = (item: QueuedAttempt) => {
-    const updated = [...offlineQueue, item];
-    setOfflineQueue(updated);
-    localStorage.setItem(offlineQueueKey, JSON.stringify(updated));
+    setOfflineQueue((current) => {
+      const updated = [...current, item];
+      saveQueue(updated);
+      return updated;
+    });
   };
 
-  const syncOfflineQueue = async () => {
-    if (!session || offlineQueue.length === 0) return;
+  /**
+   * Sends queued answers oldest first and forgets each one only once the server has
+   * it. Stopping part-way is safe: every item keeps its submission_id, so replaying
+   * one that actually arrived is answered as a duplicate rather than scored twice.
+   */
+  const syncOfflineQueue = useCallback(async () => {
+    if (!session || syncing.current) return;
+    syncing.current = true;
+    const pending = [...offlineQueue];
+    let sent = 0;
     try {
-      for (const item of offlineQueue) {
+      for (const item of pending) {
         await api.attempt(
           {
             question_id: item.question_id,
@@ -1420,15 +1745,35 @@ export default function App() {
           },
           session.access_token
         );
+        sent += 1;
+        const remaining = pending.slice(sent);
+        saveQueue(remaining);
+        setOfflineQueue(remaining);
       }
-      setOfflineQueue([]);
-      localStorage.removeItem(offlineQueueKey);
-      setIsOffline(false);
-      alert('All queued responses synced successfully to PRISM server!');
-    } catch (e) {
-      alert('Sync failed: ' + (e instanceof Error ? e.message : 'Please check connection'));
+      if (sent > 0) {
+        setSyncNotice(fill(teacherText(lang).syncDone, { n: sent }));
+        setSyncVersion((version) => version + 1);
+      }
+    } catch {
+      setSyncNotice(teacherText(lang).syncRetry);
+    } finally {
+      syncing.current = false;
     }
-  };
+  }, [session, offlineQueue, saveQueue, lang]);
+
+  // Reconnecting is all it takes; nobody should have to remember to press Sync.
+  useEffect(() => {
+    if (isOffline || !session || offlineQueue.length === 0) return;
+    syncOfflineQueue();
+    const retry = window.setInterval(syncOfflineQueue, 20000);
+    return () => window.clearInterval(retry);
+  }, [isOffline, session, offlineQueue.length, syncOfflineQueue]);
+
+  useEffect(() => {
+    if (!syncNotice) return;
+    const timer = window.setTimeout(() => setSyncNotice(''), 6000);
+    return () => window.clearTimeout(timer);
+  }, [syncNotice]);
 
   if (!session) {
     return (
@@ -1443,6 +1788,8 @@ export default function App() {
             onLangChange={setLang}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            personas={personas}
+            onSelectPersona={selectPersona}
           />
         ) : (
           <>
@@ -1481,11 +1828,19 @@ export default function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         isOffline={isOffline}
-        onToggleOffline={() => setIsOffline(!isOffline)}
+        onToggleOffline={() => setManualOffline(!manualOffline)}
         queuedCount={offlineQueue.length}
         onSyncQueue={syncOfflineQueue}
         onSignOut={signOut}
+        personas={personas}
+        onSelectPersona={selectPersona}
       />
+
+      {syncNotice && (
+        <div className="feedback" role="status" style={{ margin: '12px auto', maxWidth: '1180px' }}>
+          <p>{syncNotice}</p>
+        </div>
+      )}
 
       {activeTab === 'home' && (
         <LandingPage
@@ -1504,6 +1859,7 @@ export default function App() {
       {activeTab === 'app' && (
         session.user.role === 'teacher' ? (
           <TeacherHome
+            key={session.user.id}
             user={session.user}
             token={session.access_token}
             lang={lang}
@@ -1511,12 +1867,14 @@ export default function App() {
           />
         ) : (
           <StudentHome
+            key={session.user.id}
             user={session.user}
             token={session.access_token}
             lang={lang}
             isOffline={isOffline}
             onQueueAttempt={handleQueueAttempt}
             onSignOut={signOut}
+            syncVersion={syncVersion}
           />
         )
       )}

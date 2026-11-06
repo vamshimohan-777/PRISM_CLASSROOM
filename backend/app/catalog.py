@@ -162,3 +162,328 @@ MISCONCEPTION_TAGS: dict[str, dict[str, str]] = {
 
 def misconception_tags_for(question_id: str) -> dict[str, str]:
     return MISCONCEPTION_TAGS.get(question_id, {})
+
+
+# ---------------------------------------------------------------------------
+# Misconception database.
+#
+# Lives here, below both engine.py and search_engine.py, because the rules engine
+# reads each entry's prescribed route and the search index reads its text.
+# ---------------------------------------------------------------------------
+
+MISCONCEPTIONS_DATABASE = [
+    {
+        "id": "denominator-magnitude",
+        "title": "Denominator Magnitude Misconception",
+        "description": "Believing 1/8 > 1/3 because 8 > 3. Conflating the magnitude of the denominator with the total value of the unit fraction.",
+        "concept": "equivalent-fractions",
+        "symptoms": ["Learner selects larger denominator when comparing unit fractions", "Believes more parts means larger piece"],
+        "recommended_route": "visual-support",
+        "remedy": "Interactive SVG Fraction Bar exploration where learners visually compare equal-sized wholes split into 3 versus 8 equal parts."
+    },
+    {
+        "id": "unequal-operations",
+        "title": "Unequal Operations Slip",
+        "description": "Operating on only the numerator or only the denominator, or multiplying/dividing top and bottom by different numbers.",
+        "concept": "equivalent-fractions",
+        "symptoms": ["e.g. changing 2/3 to 4/3 or 4/9 by applying multiplier to only one part", "Arithmetic slips in multiplier grids"],
+        "recommended_route": "guided-practice",
+        "remedy": "Scaffolded multiplier grid with linked numerator-denominator ratio locks."
+    },
+    {
+        "id": "fraction-parts-gap",
+        "title": "Foundational Fraction Parts Gap",
+        "description": "Counting partitioned regions without verifying that all parts are strictly equal in area or length.",
+        "concept": "fraction-parts",
+        "symptoms": ["Treating unequal slices as identical fractional units", "Confusing numerator with total parts"],
+        "recommended_route": "foundation",
+        "remedy": "Hands-on physical paper-strip folding and shading to establish equal-partitioning before equivalence."
+    },
+    {
+        "id": "additive-bias",
+        "title": "Additive Equivalence Bias",
+        "description": "Attempting to create equivalent fractions by adding or subtracting the same number from numerator and denominator (e.g. 1/2 = 2/3 by adding 1).",
+        "concept": "equivalent-fractions",
+        "symptoms": ["Adds constant k to both top and bottom instead of multiplying by k", "Believes (a+k)/(b+k) == a/b"],
+        "recommended_route": "visual-support",
+        "remedy": "Visual counter-example showing 1/2 bar alongside 2/3 bar to prove area is not preserved under addition."
+    },
+    {
+        "id": "sign-inversion-slip",
+        "title": "Sign Inversion & Balancing Error",
+        "description": "Dropping or inverting negative signs when transposing terms across an equals sign in linear equations.",
+        "concept": "linear-equations",
+        "symptoms": ["Changing 3x + 5 = 20 into 3x = 25 (adding instead of subtracting 5)", "Errors when dividing by negative coefficients"],
+        "recommended_route": "guided-practice",
+        "remedy": "Two-pan balance scale visualization showing opposite operations applied simultaneously to both sides."
+    },
+    {
+        "id": "perimeter-area-confusion",
+        "title": "Perimeter vs Area Conflation",
+        "description": "Confusing the boundary length of a quadrilateral with the two-dimensional surface area enclosed.",
+        "concept": "quadrilaterals",
+        "symptoms": ["Using perimeter formulas when asked for area", "Assuming shapes with equal perimeter have equal area"],
+        "recommended_route": "foundation",
+        "remedy": "Tile-grid area counting alongside string-boundary perimeter measurement."
+    },
+    {
+        "id": "square-root-halving",
+        "title": "Square Root Halving Fallacy",
+        "description": "Dividing a number by 2 instead of finding the number which when multiplied by itself yields the original value (e.g. sqrt(16) = 8).",
+        "concept": "squares-roots",
+        "symptoms": ["sqrt(100) answered as 50", "sqrt(64) answered as 32"],
+        "recommended_route": "visual-support",
+        "remedy": "Square tile geometric array showing side length of a square with area N."
+    },
+    {
+        "id": "sign-error",
+        "title": "Negative Sign Dropped in Standard Form",
+        "description": "Losing or misplacing the negative sign when writing a rational number in standard form.",
+        "concept": "equivalent-fractions",
+        "symptoms": ["Writes -18/24 as 3/4", "Treats -a/b and a/b as the same number"],
+        "recommended_route": "guided-practice",
+        "remedy": "Number-line placement of the pair -3/4 and 3/4 before simplifying, so the sign is fixed before the arithmetic."
+    },
+    {
+        "id": "incomplete-simplification",
+        "title": "Partial Simplification",
+        "description": "Dividing by a common factor but stopping before the highest common factor is removed.",
+        "concept": "simplification",
+        "symptoms": ["Gives -9/12 instead of -3/4", "Stops after dividing by 2 when 6 was available"],
+        "recommended_route": "guided-practice",
+        "remedy": "Prime-factor both terms and strike out every shared factor, then check no common factor remains."
+    },
+    {
+        "id": "property-confusion",
+        "title": "Algebraic Property Misnaming",
+        "description": "Confusing commutativity, associativity and distributivity when naming which property an identity shows.",
+        "concept": "equivalent-fractions",
+        "symptoms": ["Calls a + b = b + a associativity", "Cannot separate regrouping from reordering"],
+        "recommended_route": "foundation",
+        "remedy": "Side-by-side card sort: reorder (commutative) versus regroup (associative) versus share-out (distributive)."
+    },
+    {
+        "id": "inverse-type-confusion",
+        "title": "Additive vs Multiplicative Inverse",
+        "description": "Returning the reciprocal when the additive inverse was asked for, or the reverse.",
+        "concept": "equivalent-fractions",
+        "symptoms": ["Gives -5/3 as the additive inverse of -3/5", "Flips the fraction instead of flipping the sign"],
+        "recommended_route": "guided-practice",
+        "remedy": "Anchor each inverse to its identity: additive inverses sum to 0, multiplicative inverses multiply to 1."
+    },
+    {
+        "id": "coefficient-confusion",
+        "title": "Coefficient Reported as the Solution",
+        "description": "Reading the coefficient of the variable as the answer rather than solving for the variable.",
+        "concept": "linear-equations",
+        "symptoms": ["Answers 3 for 3x + 5 = 20", "Stops once the variable term is isolated"],
+        "recommended_route": "guided-practice",
+        "remedy": "Finish every solution by stating 'x = ...' and substituting the value back into the original equation."
+    },
+    {
+        "id": "inverse-operation-slip",
+        "title": "Wrong Inverse Operation",
+        "description": "Undoing multiplication by subtracting (or division by adding) when isolating a variable.",
+        "concept": "linear-equations",
+        "symptoms": ["Solves 7x = 49 as x = 42", "Subtracts the coefficient instead of dividing by it"],
+        "recommended_route": "guided-practice",
+        "remedy": "Pair each operation with its inverse on a two-pan balance before transposing any term."
+    },
+    {
+        "id": "equation-setup-slip",
+        "title": "Word Problem Modelling Error",
+        "description": "Forming an equation that does not represent the stated relationship, even though the algebra is then carried out correctly.",
+        "concept": "linear-equations",
+        "symptoms": ["Mis-assigns which quantity is the unknown", "Omits a stated condition such as 'after 3 years'"],
+        "recommended_route": "follow-up",
+        "remedy": "Underline each quantity in the sentence and label it before writing any symbol; read the equation back as English."
+    },
+    {
+        "id": "angle-sum-slip",
+        "title": "Polygon Angle Sum Error",
+        "description": "Using the wrong angle sum for a polygon, usually the triangle's 180° or an un-adjusted (n-2) x 180 calculation.",
+        "concept": "quadrilaterals",
+        "symptoms": ["Uses 180° for a quadrilateral", "Forgets to subtract 2 from the side count"],
+        "recommended_route": "visual-support",
+        "remedy": "Physically split each polygon into triangles from one vertex and count them before applying (n-2) x 180."
+    },
+    {
+        "id": "quadrilateral-classification-slip",
+        "title": "Quadrilateral Property Mix-Up",
+        "description": "Attributing the defining properties of one special quadrilateral to another.",
+        "concept": "quadrilaterals",
+        "symptoms": ["Calls a trapezium a parallelogram", "Assumes every quadrilateral has equal opposite angles"],
+        "recommended_route": "visual-support",
+        "remedy": "Build a property grid (parallel sides, equal sides, equal angles, perpendicular diagonals) and place each shape in it."
+    },
+    {
+        "id": "construction-tool-slip",
+        "title": "Construction Instrument Choice",
+        "description": "Selecting an instrument that cannot produce the required constraint, such as a ruler for a fixed radius.",
+        "concept": "practical-geometry",
+        "symptoms": ["Reaches for a protractor to draw a circle", "Measures arcs by eye"],
+        "recommended_route": "foundation",
+        "remedy": "Match each instrument to the single constraint it fixes: compass for distance, protractor for angle, ruler for length."
+    },
+    {
+        "id": "construction-data-slip",
+        "title": "Insufficient Construction Data",
+        "description": "Believing a quadrilateral can be constructed uniquely from fewer than five independent measurements.",
+        "concept": "practical-geometry",
+        "symptoms": ["Attempts a construction from three sides", "Guesses the missing measurement"],
+        "recommended_route": "foundation",
+        "remedy": "Count degrees of freedom aloud before drawing; demonstrate two different shapes fitting the same incomplete data."
+    },
+    {
+        "id": "pythagoras-slip",
+        "title": "Pythagorean Relationship Error",
+        "description": "Adding side lengths instead of squaring them, or misidentifying the hypotenuse.",
+        "concept": "squares-roots",
+        "symptoms": ["Claims 3 + 4 is close enough to 5", "Applies a^2 + b^2 = c^2 with c as a leg"],
+        "recommended_route": "visual-support",
+        "remedy": "Draw squares on each side of the right triangle and compare their areas by counting unit tiles."
+    },
+    {
+        "id": "probability-denominator-slip",
+        "title": "Probability Denominator Error",
+        "description": "Using the count of unfavourable outcomes, or the favourable count, as the denominator instead of the total.",
+        "concept": "data-handling",
+        "symptoms": ["Gives 2/3 instead of 2/5 for 2 blue among 5 counters", "Inverts favourable and total"],
+        "recommended_route": "guided-practice",
+        "remedy": "Write 'favourable / total' as a fixed template and fill the total first, listing every outcome."
+    },
+    {
+        "id": "mean-median-confusion",
+        "title": "Mean and Median Conflated",
+        "description": "Reporting the middle value when the average is asked for, or the average when the middle value is asked for.",
+        "concept": "data-handling",
+        "symptoms": ["Gives the median for a mean question", "Forgets to divide by the number of observations"],
+        "recommended_route": "guided-practice",
+        "remedy": "Compute both statistics for the same small data set and name what each one answers."
+    },
+    {
+        "id": "perfect-square-recognition",
+        "title": "Perfect Square Not Recognised",
+        "description": "Failing to identify which numbers are perfect squares, or guessing roots without checking by multiplication.",
+        "concept": "squares-roots",
+        "symptoms": ["Selects 18 or 30 as a perfect square", "Cannot recall squares beyond 10 x 10"],
+        "recommended_route": "foundation",
+        "remedy": "Build the 1-20 square table from tile arrays, then verify every candidate root by multiplying it by itself."
+    },
+    {
+        "id": "cube-square-confusion",
+        "title": "Cube and Square Conflated",
+        "description": "Treating a perfect square as a perfect cube, or returning a square root where a cube root was required.",
+        "concept": "cubes-roots",
+        "symptoms": ["Answers 8 for the cube root of 64", "Selects 36 or 49 as perfect cubes"],
+        "recommended_route": "visual-support",
+        "remedy": "Contrast a flat square tile array with a stacked unit-cube model so the third dimension is visible."
+    },
+    {
+        "id": "interest-simple-vs-compound",
+        "title": "Simple Interest Used for Compound",
+        "description": "Applying the simple interest formula where interest should accrue on the accumulated amount.",
+        "concept": "comparing-quantities",
+        "symptoms": ["Gives Rs 2,000 instead of Rs 2,100 for 2 years at 10%", "Never recalculates the principal"],
+        "recommended_route": "guided-practice",
+        "remedy": "Lay out a year-by-year table where each year's closing amount becomes the next year's principal."
+    },
+    {
+        "id": "percentage-base-confusion",
+        "title": "Percentage Base Quantity Slip",
+        "description": "Calculating percentage increase or decrease relative to the final value instead of the original initial base.",
+        "concept": "comparing-quantities",
+        "symptoms": ["Using (New - Old)/New instead of (New - Old)/Old", "Inverting markup and discount percentages"],
+        "recommended_route": "guided-practice",
+        "remedy": "Step-by-step ratio tables anchoring the 100% reference bar to the original quantity."
+    },
+    {
+        "id": "forgot-division-slip",
+        "title": "Stopped Before Dividing",
+        "description": "Isolating the variable term correctly and then reporting that value without dividing by the coefficient.",
+        "concept": "linear-equations",
+        "symptoms": ["Answers 15 for 3x + 5 = 20", "Treats 3x = 15 as the finished solution"],
+        "recommended_route": "guided-practice",
+        "remedy": "Finish every solution by writing 'x = ...' with coefficient 1, then substitute it back into the original equation."
+    },
+    {
+        "id": "reciprocal-inversion",
+        "title": "Scaling the Wrong Term",
+        "description": "Multiplying the denominator when a quantity is scaled up, which makes the amount smaller rather than larger.",
+        "concept": "equivalent-fractions",
+        "symptoms": ["Doubles 3/4 cup to 3/8 cup", "Expects a larger denominator to mean a larger amount"],
+        "recommended_route": "visual-support",
+        "remedy": "Lay scaled copies of the fraction bar end to end and compare the total length with the original bar."
+    },
+    {
+        "id": "division-instead-of-root",
+        "title": "Dividing Instead of Taking a Root",
+        "description": "Dividing a number by 3 (or 2) instead of finding the value that multiplies by itself to give the number.",
+        "concept": "cubes-roots",
+        "symptoms": ["Gives 9 for the cube root of 27", "Treats the root symbol as a division instruction"],
+        "recommended_route": "visual-support",
+        "remedy": "Build the number as a cube from unit blocks and read the root from the edge length."
+    },
+]
+
+
+def misconception_entry(misconception_id: str | None) -> dict | None:
+    return next((m for m in MISCONCEPTIONS_DATABASE if m["id"] == misconception_id), None)
+
+
+def misconception_route(misconception_id: str | None, default: str = "visual-support") -> str:
+    entry = misconception_entry(misconception_id)
+    return entry["recommended_route"] if entry else default
+
+
+# ---------------------------------------------------------------------------
+# Prerequisite skills.
+#
+# Each chapter has at least one skill it depends on and one quick question that
+# measures it, so a weak foundation can be detected in any chapter. These are not
+# chapters: their questions appear inside the chapters that depend on them.
+# ---------------------------------------------------------------------------
+
+PREREQUISITE_SKILLS: dict[str, dict[str, str]] = {
+    "fraction-parts": {"title": "Parts of a fraction", "chapter_id": "rational-numbers", "objective": "Learner identifies equal parts and names numerator and denominator.", "remedy": "Fold paper strips into equal parts, shade some, and name the fraction before comparing anything."},
+    "fraction-magnitude": {"title": "Comparing fraction sizes", "chapter_id": "rational-numbers", "objective": "Learner connects a larger denominator with smaller equal parts.", "remedy": "Place two fraction bars of the same whole side by side and compare the size of one part from each."},
+    "simplification": {"title": "Simplifying fractions", "chapter_id": "rational-numbers", "objective": "Learner divides both terms by a common factor until none remains.", "remedy": "List the factors of both terms, divide by the highest common factor, and check that no factor remains."},
+    "inverse-operations": {"title": "Undoing an operation", "chapter_id": "linear-equations", "objective": "Learner undoes addition with subtraction and multiplication with division.", "remedy": "Use a two-pan balance: whatever is done to one pan must be done to the other, using the opposite operation."},
+    "triangle-angle-sum": {"title": "Angle sum of a triangle", "chapter_id": "quadrilaterals", "objective": "Learner uses the fact that a triangle's angles total 180°.", "remedy": "Tear the three corners off a paper triangle and place them together to form a straight line."},
+    "measuring-skills": {"title": "Measuring with a ruler", "chapter_id": "practical-geometry", "objective": "Learner reads a length correctly as the difference between two ruler marks.", "remedy": "Measure the same segment starting from 0 and from another mark, then compare the two readings."},
+    "reading-data": {"title": "Reading a data list", "chapter_id": "data-handling", "objective": "Learner counts how often a value occurs in a data list.", "remedy": "Turn the list into a tally table, then read the frequency of each value from the table."},
+    "number-factors": {"title": "Prime factorisation", "chapter_id": "squares-roots", "objective": "Learner writes a number as a product of prime numbers only.", "remedy": "Build a factor tree and keep splitting until every number at the end is prime."},
+    "repeated-multiplication": {"title": "Repeated multiplication", "chapter_id": "cubes-roots", "objective": "Learner calculates a number multiplied by itself three times.", "remedy": "Stack unit cubes into layers: multiply for one layer, then multiply again by the number of layers."},
+    "percent-meaning": {"title": "Meaning of percent", "chapter_id": "comparing-quantities", "objective": "Learner reads a percentage as parts out of 100 and finds it of a quantity.", "remedy": "Shade a 100-square grid to show the percentage, then scale the grid to the quantity in the question."},
+}
+
+# (id, concept_id, prompt, options, answer, explanation, misconception_map)
+PREREQUISITE_QUESTIONS = [
+    ("prereq-magnitude", "fraction-magnitude", "Which is larger: 1/2 or 1/5?", ["1/2", "1/5", "They are equal"], "1/2", "Halves are larger pieces than fifths of the same whole, so 1/2 is larger.", {"1/5": "denominator-magnitude"}),
+    ("prereq-simplify", "simplification", "Write 6/8 in simplest form.", ["3/4", "2/3", "6/8", "1/2"], "3/4", "Divide both terms by their highest common factor, 2: 6/8 = 3/4.", {"6/8": "incomplete-simplification"}),
+    ("prereq-inverse", "inverse-operations", "If n + 6 = 10, what is n?", ["4", "16", "6", "10"], "4", "Undo adding 6 by subtracting 6 from both sides: n = 10 - 6 = 4.", {"16": "sign-inversion-slip"}),
+    ("prereq-triangle", "triangle-angle-sum", "Two angles of a triangle are 60° and 70°. The third angle is…", ["50°", "60°", "130°", "230°"], "50°", "A triangle's angles total 180°: 180° - (60° + 70°) = 50°.", {"230°": "angle-sum-slip"}),
+    ("prereq-ruler", "measuring-skills", "A line segment runs from the 2 cm mark to the 9 cm mark on a ruler. How long is it?", ["7 cm", "9 cm", "11 cm", "2 cm"], "7 cm", "The length is the difference between the marks: 9 cm - 2 cm = 7 cm.", {"9 cm": "construction-tool-slip"}),
+    ("prereq-data", "reading-data", "The marks of four students are 5, 7, 7 and 9. How many students scored 7?", ["1", "2", "3", "7"], "2", "The value 7 appears twice in the list, so 2 students scored 7.", {}),
+    ("prereq-factors", "number-factors", "Which is the prime factorisation of 36?", ["2 × 2 × 3 × 3", "4 × 9", "6 × 6", "2 × 3 × 6"], "2 × 2 × 3 × 3", "Every factor must be prime: 36 = 2 × 2 × 3 × 3. The numbers 4, 6 and 9 are not prime.", {}),
+    ("prereq-repeated", "repeated-multiplication", "What is 3 × 3 × 3?", ["9", "27", "6", "33"], "27", "3 × 3 = 9, and 9 × 3 = 27.", {"9": "cube-square-confusion"}),
+    ("prereq-percent", "percent-meaning", "What is 50% of 80?", ["40", "50", "30", "160"], "40", "50% means 50 out of 100, which is one half. Half of 80 is 40.", {"50": "percentage-base-confusion"}),
+]
+
+
+def concept_title(concept_id: str) -> str:
+    """A readable name for any node in the prerequisite graph."""
+    if concept_id in PREREQUISITE_SKILLS:
+        return PREREQUISITE_SKILLS[concept_id]["title"]
+    chapter = next((c for c in CHAPTERS if c["concept"] == concept_id), None)
+    return chapter["title"] if chapter else concept_id.replace("-", " ").title()
+
+
+def concept_remedy(concept_id: str) -> str:
+    """What to do about a weak prerequisite, whether it is a skill or a whole chapter."""
+    if concept_id in PREREQUISITE_SKILLS:
+        return PREREQUISITE_SKILLS[concept_id]["remedy"]
+    chapter = next((c for c in CHAPTERS if c["concept"] == concept_id), None)
+    if chapter:
+        return f"Review Chapter {chapter['number']}: {chapter['title']} before continuing, starting with its diagnostic questions."
+    return "Review this concept before continuing."

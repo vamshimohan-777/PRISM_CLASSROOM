@@ -5,11 +5,11 @@
 ## Overview & Mission
 PRISM Classroom is an evidence-informed adaptive learning copilot engineered for Indian school classrooms (CBSE and State Boards, Classes 6–10, with 45–60 learners per section). Rather than replacing educators with black-box generative AI tutors that produce hallucinations and isolate students behind headphones, PRISM operates on a transparent, deterministic rules engine and an acyclic prerequisite concept graph (DAG).
 
-PRISM diagnoses specific latent misconceptions, dynamically adapts visual representations (interactive SVG fraction bars and equal-part strips), verifies independent transfer with novel contextual tasks, and compiles real-time student evidence into the Teacher Intervention Compiler—empowering educators with editable small-group pods, a 45-minute lesson pacing visualizer, individual audit dossiers, and official printable CBSE inspection briefings.
+PRISM diagnoses specific latent misconceptions, dynamically adapts visual representations (interactive SVG fraction bars and equal-part strips), verifies independent transfer with novel contextual tasks, and compiles recorded student evidence into the Teacher Intervention Compiler—empowering educators with editable small-group pods, a 45-minute lesson pacing visualizer, individual audit dossiers, and official printable CBSE inspection briefings.
 
 ## Architecture & Technology Stack
-- **Frontend Layer:** React 18, TypeScript 5.6, Vite 5.4, Lucide Icons, pure responsive CSS.
-- **API & Gateway Layer:** FastAPI 0.115, Uvicorn, PBKDF2 password hashing with salt, signed JWT bearer authentication.
+- **Frontend Layer:** React 19, TypeScript 7, Vite 8, Lucide Icons, pure responsive CSS.
+- **API & Gateway Layer:** FastAPI 0.115, Uvicorn, PBKDF2 password hashing with salt, signed, expiring bearer tokens (HMAC-SHA256).
 - **Engine Layer:** Deterministic Rules Engine (`engine.py`) with topological DAG acyclicity validation, misconception pattern classification, and weighted rubric scoring: `Mastery = round(clamp(0.05, 0.95, 0.25 * M_prev + 0.75 * (sum(w_i * c_i) / sum(w_i))), 2)`.
 - **Persistence Layer:** SQLAlchemy ORM, SQLite (`prism.db`), 9 normalized relational tables.
 - **Offline Reliability:** Client-side UUID deduplication and `localStorage` queueing for low-bandwidth rural and semi-urban classrooms.

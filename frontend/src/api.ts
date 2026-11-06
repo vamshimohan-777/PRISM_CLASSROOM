@@ -3,14 +3,28 @@ export const API = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '/api
 export type User = { id: number; name: string; email: string; role: 'student' | 'teacher'; student_code?: string | null };
 export type Auth = { access_token: string; token_type: 'bearer'; user: User };
 export type Unit = { id: string; number: number; title: string; summary: string; concept: string; minutes: number; color: string };
-export type Question = { id: string; prompt: string; options: string[]; stage: string; explanation: string; is_transfer: boolean };
+export type Question = { id: string; prompt: string; options: string[]; stage: string; is_transfer: boolean };
+export type PrerequisiteGap = { concept_id: string; title: string; remedy: string; mastery: number };
+
+export type CurriculumGraphRow = {
+  unit_id: string;
+  number: number;
+  title: string;
+  concept: string;
+  skills: Array<{ id: string; title: string }>;
+  chapters: Array<{ id: string; title: string }>;
+};
+
 export type Progress = {
+  prerequisite_gap?: PrerequisiteGap | null;
   unit_id?: string;
   student_code: string;
   mastery: number;
   evidence_count: number;
   recommendation: string;
   misconception: string | null;
+  misconception_title?: string | null;
+  misconception_remedy?: string | null;
   misconception_confidence?: number;
   prerequisite_status?: string;
   provisional?: boolean;
@@ -19,6 +33,12 @@ export type Progress = {
 export type Plan = {
   id: number;
   group_key: string;
+  concept_id?: string;
+  unit_id?: string | null;
+  chapter_number?: number | null;
+  chapter_title?: string;
+  suggested_add?: string[];
+  suggested_remove?: string[];
   barrier: string;
   evidence: string;
   confidence: string;
@@ -46,6 +66,7 @@ export type Persona = {
 export type AttemptRecord = {
   id: number;
   question_id: string;
+  chapter_title?: string;
   prompt: string;
   stage: string;
   response: string;
@@ -56,18 +77,18 @@ export type AttemptRecord = {
   created_at: string | null;
 };
 
-export type StudentDetail = {
-  code: string;
-  name: string;
-  email: string;
-  grade: number;
+export type ChapterEvidence = {
+  unit_id: string;
+  number: number;
+  title: string;
   mastery: number;
   evidence_count: number;
   misconception: string | null;
+  misconception_title: string | null;
   misconception_confidence: number;
   prerequisite_status: string;
+  prerequisite_gap?: PrerequisiteGap | null;
   recommendation: string;
-  attempts: AttemptRecord[];
 };
 
 export type LearnerSummary = {
@@ -76,10 +97,21 @@ export type LearnerSummary = {
   mastery: number;
   evidence_count: number;
   active_units: number;
+  focus_unit?: string | null;
+  focus_chapter_number?: number | null;
   recommendation: string;
   misconception: string | null;
+  misconception_title?: string | null;
   misconception_confidence: number;
   prerequisite_status: string;
+  prerequisite_gap?: PrerequisiteGap | null;
+  chapters?: ChapterEvidence[];
+};
+
+export type StudentDetail = LearnerSummary & {
+  email: string;
+  grade: number;
+  attempts: AttemptRecord[];
 };
 
 export type WorkspaceData = {
@@ -233,14 +265,15 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
 
 export const api = {
   login: (email: string, password: string) => request<Auth>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  register: (name: string, email: string, password: string, role: 'student' | 'teacher') =>
-    request<Auth>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password, role }) }),
+  register: (name: string, email: string, password: string, role: 'student' | 'teacher', classroom_code?: string) =>
+    request<Auth>('/auth/register', { method: 'POST', body: JSON.stringify({ name, email, password, role, classroom_code: classroom_code || undefined }) }),
   me: (token: string) => request<User>('/auth/me', {}, token),
+  curriculumGraph: () => request<{ prerequisite_graph: CurriculumGraphRow[] }>('/curriculum'),
   units: () => request<Unit[]>('/learning/units'),
   progress: (token: string) => request<Progress[]>('/learning/my-progress', {}, token),
   questions: (unitId: string, stage: string, token: string) => request<Question[]>(`/learning/units/${unitId}/questions?stage=${stage}`, {}, token),
   attempt: (body: { question_id: string; response: string; stage: 'diagnostic' | 'practice' | 'test'; submission_id: string }, token: string) =>
-    request<{ correct: boolean; feedback: string; profile: Progress; reason: string }>('/learning/attempts', { method: 'POST', body: JSON.stringify(body) }, token),
+    request<{ correct: boolean; duplicate: boolean; feedback: string; explanation?: string; profile: Progress; reason: string; route?: string }>('/learning/attempts', { method: 'POST', body: JSON.stringify(body) }, token),
   workspace: (token: string) => request<WorkspaceData>('/teacher/workspace', {}, token),
   personas: () => request<Persona[]>('/demo/personas'),
   resetDemo: () => request<{ status: string; message: string }>('/demo/reset', { method: 'POST' }),

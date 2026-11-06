@@ -9,7 +9,9 @@ class AttemptIn(BaseModel):
 
 class InterventionDecision(BaseModel):
     status: Literal["approved", "rejected", "modified", "proposed"] = "approved"
-    teacher_notes: str = Field(default="", max_length=1000)
+    # None means "leave unchanged". This defaulted to "", so one-click Approve
+    # silently erased whatever notes the teacher had already written.
+    teacher_notes: str | None = Field(default=None, max_length=1000)
     activity: str | None = Field(default=None, max_length=2000)
     duration: str | None = Field(default=None, max_length=24)
     outcome: str | None = Field(default=None, max_length=1000)

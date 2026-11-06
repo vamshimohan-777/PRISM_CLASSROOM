@@ -115,7 +115,7 @@
           "name": "What is the Teacher Intervention Compiler?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The Teacher Intervention Compiler is PRISM's signature capability. It aggregates real-time student evidence across the classroom and clusters students into four flexible pods: Visual Support (10 min), Foundation Track (12 min), Guided Practice (12 min), and Extension Challenge (15 min). Teachers retain 100% professional control to approve, modify durations and student rosters, or dismiss recommendations."
+            "text": "The Teacher Intervention Compiler is PRISM's signature capability. It groups students by the route the rules engine derives from their recorded answers, chapter by chapter, into flexible pods such as Visual Support (10 min), Foundation (12 min), Guided Practice (12 min), and Extension (15 min). Teachers can approve a pod, change its duration, activity or members, or dismiss it, and recompiling never overwrites those decisions."
           }
         },
         {
@@ -123,7 +123,7 @@
           "name": "Why does PRISM avoid generative AI in its diagnostic core?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Generative AI language models exhibit unpredictability, non-deterministic reasoning, and mathematical hallucinations that are hazardous in school curricula. PRISM uses deterministic rubric formulas and graph theory, ensuring that every diagnostic score, confidence metric, and grouping decision is 100% reproducible and audit-proof."
+            "text": "A diagnosis has to be explainable to a teacher and give the same result every time. PRISM routes learners with deterministic rules over a prerequisite graph, so every score, label and grouping can be reproduced from the attempt log. No model is involved in routing; the only model call is an optional Answer Engine fallback that is off by default."
           }
         },
         {

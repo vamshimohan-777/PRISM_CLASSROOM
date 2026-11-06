@@ -54,10 +54,14 @@ def test_ancestors_are_transitive():
     assert set(ancestors("equivalent-fractions")) == {"fraction-magnitude", "simplification", "fraction-parts"}
     assert ancestors("fraction-parts") == []
 
-def test_ancestors_of_unmodelled_concept_is_empty():
-    """Chapters with no modelled prerequisites must not break prerequisite routing."""
+def test_ancestors_of_unknown_concept_is_empty():
+    """A concept outside the graph must not break prerequisite routing."""
     from app.engine import ancestors
-    assert ancestors("comparing-quantities") == []
+    assert ancestors("not-a-concept") == []
+
+def test_ancestors_cross_chapters():
+    from app.engine import ancestors
+    assert {"percent-meaning", "equivalent-fractions", "fraction-parts"} <= set(ancestors("comparing-quantities"))
 
 def test_prerequisite_mastery_ignores_unattempted_nodes():
     from app.engine import prerequisite_mastery_from

@@ -541,7 +541,7 @@ export function EnginesHub({
                   </span>
                 </div>
                 <span className="confidence-pill">
-                  Confidence: {Math.round(answerResult.confidence * 100)}%
+                  {answerResult.confidence > 0 ? `${e.confidenceLabel}: ${Math.round(answerResult.confidence * 100)}%` : e.notSolved}
                 </span>
               </div>
 
@@ -697,7 +697,7 @@ export function EnginesHub({
                 if (!lessonPlan) handleGenerateLessonPlan();
               }}
             >
-              <FileText size={16} /> 45-Min Differentiated Lesson Plan
+              <FileText size={16} /> {e.lessonPlanTab}
             </button>
             <button
               type="button"
@@ -724,6 +724,8 @@ export function EnginesHub({
                     <option value="cubes-roots">{e.optCubes}</option>
                     <option value="quadrilaterals">{e.optQuadrilaterals}</option>
                     <option value="comparing-quantities">{e.optComparing}</option>
+                    <option value="data-handling">{e.optData}</option>
+                    <option value="practical-geometry">{e.optGeometry}</option>
                   </select>
                 </div>
 
@@ -752,7 +754,7 @@ export function EnginesHub({
                   disabled={genQuestionBusy}
                 >
                   <RefreshCw size={16} className={genQuestionBusy ? 'spin' : ''} />
-                  {genQuestionBusy ? 'Generating…' : 'Generate New Question'}
+                  {genQuestionBusy ? e.generating : e.generateQuestionBtn}
                 </button>
               </div>
 
@@ -956,7 +958,7 @@ export function EnginesHub({
                   disabled={lessonPlanBusy}
                 >
                   <RefreshCw size={16} className={lessonPlanBusy ? 'spin' : ''} />
-                  {lessonPlanBusy ? 'Compiling…' : 'Generate Differentiated Lesson Plan'}
+                  {lessonPlanBusy ? e.compiling : e.generateLessonBtn}
                 </button>
 
                 {lessonPlan && (

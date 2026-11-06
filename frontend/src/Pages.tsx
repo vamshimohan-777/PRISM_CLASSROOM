@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { api, type CurriculumGraphRow } from './api';
+import { getLocalizedChapterTitle } from './localization';
+import { prerequisiteName, teacherText } from './teacherText';
+import { useEffect, useState } from 'react';
 import {
   CheckCircle2,
   ArrowRight,
@@ -169,6 +172,11 @@ export function LandingPage({ lang, onLaunchApp }: LandingPageProps) {
 // ----------------------------------------------------
 export function CurriculumPage({ lang, onLaunchApp }: { lang: Language; onLaunchApp: () => void }) {
   const t = TRANSLATIONS[lang];
+  const x = teacherText(lang);
+  const [graph, setGraph] = useState<CurriculumGraphRow[]>([]);
+  useEffect(() => {
+    api.curriculumGraph().then((data) => setGraph(data.prerequisite_graph)).catch(() => setGraph([]));
+  }, []);
 
   const chapters = [
     {
@@ -276,6 +284,43 @@ export function CurriculumPage({ lang, onLaunchApp }: { lang: Language; onLaunch
           </div>
         </div>
       </section>
+
+      {/* Prerequisites for every chapter, from the API so it cannot drift from the engine */}
+      {graph.length > 0 && (
+        <section className="chapters-catalog-section">
+          <h3>{x.graphTitle}</h3>
+          <p className="dag-sub">{x.graphSub}</p>
+          <div className="curriculum-table-wrapper">
+            <table className="curriculum-table">
+              <thead>
+                <tr>
+                  <th>{t.colChapter}</th>
+                  <th>{x.thSkills}</th>
+                  <th>{x.thEarlier}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {graph.map((row) => (
+                  <tr key={row.unit_id}>
+                    <td><b>{getLocalizedChapterTitle(row.unit_id, row.title, lang)}</b></td>
+                    <td>{row.skills.map((skill) => prerequisiteName(skill.id, lang, skill.title)).join(', ')}</td>
+                    <td>
+                      {row.chapters.length
+                        ? row.chapters
+                            .map((chapter) => {
+                              const unit = graph.find((item) => item.concept === chapter.id);
+                              return unit ? getLocalizedChapterTitle(unit.unit_id, unit.title, lang) : chapter.title;
+                            })
+                            .join(', ')
+                        : x.noneEarlier}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       {/* 8 Chapters Table */}
       <section className="chapters-catalog-section">

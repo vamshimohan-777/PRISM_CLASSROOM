@@ -12,7 +12,7 @@ import random
 import re
 from typing import Any
 import httpx
-from .catalog import CHAPTERS
+from .catalog import MISCONCEPTIONS_DATABASE, QUESTION_BANK, misconception_entry, CHAPTERS
 
 @dataclass
 class GeneratedQuestion:
@@ -45,17 +45,53 @@ class GenerativeEngine:
         cid = concept_id.lower()
 
         if "linear" in cid or cid == "linear-equations":
-            return self._gen_linear_equation_question(stage, difficulty)
+            question = self._gen_linear_equation_question(stage, difficulty)
         elif "square" in cid or cid == "squares-roots":
-            return self._gen_square_root_question(stage, difficulty)
+            question = self._gen_square_root_question(stage, difficulty)
         elif "cube" in cid or cid == "cubes-roots":
-            return self._gen_cube_root_question(stage, difficulty)
+            question = self._gen_cube_root_question(stage, difficulty)
         elif "quadrilateral" in cid:
-            return self._gen_quadrilateral_question(stage, difficulty)
+            question = self._gen_quadrilateral_question(stage, difficulty)
         elif "comparing" in cid or "quantity" in cid or cid == "comparing-quantities":
-            return self._gen_comparing_quantities_question(stage, difficulty)
+            question = self._gen_comparing_quantities_question(stage, difficulty)
+        elif "data" in cid:
+            question = self._gen_data_handling_question(stage, difficulty)
+        elif "geometry" in cid:
+            question = self._gen_practical_geometry_question(stage, difficulty)
         else:
-            return self._gen_fraction_question(stage, difficulty)
+            question = self._gen_fraction_question(stage, difficulty)
+        return self._finalize(question)
+
+    @staticmethod
+    def _finalize(question: dict[str, Any]) -> dict[str, Any]:
+        """Enforce the invariants every generated question must satisfy.
+
+        Random parameters can make a distractor collide with the correct answer
+        (2/3 = __/6 with k = 2 gives both 4 by multiplying and 4 by adding). A tag
+        on the right answer would then label a correct learner as confused, so
+        duplicates are removed, tags are kept only on real wrong options, and the
+        list is padded back to four distinct choices.
+        """
+        answer = question["expected_answer"]
+        options = list(dict.fromkeys(question["options"]))
+        numeric = answer.lstrip("₹").split(" ")[0].rstrip("°")
+        step = 1
+        while len(options) < 4:
+            if numeric.isdigit():
+                candidate = answer.replace(numeric, str(int(numeric) + step), 1)
+            else:
+                candidate = f"None of these ({step})"
+            if candidate not in options:
+                options.append(candidate)
+            step += 1
+        random.shuffle(options)
+        question["options"] = options
+        question["misconception_map"] = {
+            option: tag
+            for option, tag in question["misconception_map"].items()
+            if option != answer and option in options
+        }
+        return question
 
     def _gen_fraction_question(self, stage: str, difficulty: str) -> dict[str, Any]:
         """Generates dynamic fraction questions with explicit misconception distractors."""
@@ -160,11 +196,15 @@ class GenerativeEngine:
         var = "x"
 
         if difficulty == "challenge" or stage == "test":
-            prompt = f"Five identical notebooks cost ₹75 in total plus a fixed shipping charge of ₹15, making total bill ₹90. If the equation is 5x + 15 = 90, what is the cost of one notebook (x)?"
-            correct = "₹15"
-            d_add = "₹21"  # (90 + 15) / 5
-            d_no_div = "₹75"  # 90 - 15 without div
-            d_mul = "₹375"  # (90 - 15) * 5
+            count = random.choice([4, 5, 6, 8])
+            price = random.choice([12, 15, 18, 20, 25])
+            shipping = random.choice([10, 15, 20, 30])
+            total = count * price + shipping
+            prompt = f"{count} identical notebooks plus a fixed delivery charge of ₹{shipping} cost ₹{total} in total. If {count}x + {shipping} = {total}, what is the cost of one notebook (x)?"
+            correct = f"₹{price}"
+            d_add = f"₹{(total + shipping) / count:g}"  # added the charge instead of subtracting
+            d_no_div = f"₹{total - shipping}"  # subtracted but never divided
+            d_mul = f"₹{(total - shipping) * count}"  # multiplied instead of dividing
             options = [correct, d_add, d_no_div, d_mul]
             random.shuffle(options)
             return {
@@ -175,7 +215,7 @@ class GenerativeEngine:
                 "prompt": prompt,
                 "options": options,
                 "expected_answer": correct,
-                "explanation": "Subtract 15 from 90 to get 75, then divide by 5: 75 ÷ 5 = ₹15.",
+                "explanation": f"Subtract {shipping} from {total} to get {total - shipping}, then divide by {count}: {total - shipping} ÷ {count} = ₹{price}.",
                 "misconception_map": {
                     d_add: "sign-inversion-slip",
                     d_no_div: "forgot-division-slip"
@@ -284,11 +324,13 @@ class GenerativeEngine:
         }
 
     def _gen_quadrilateral_question(self, stage: str, difficulty: str) -> dict[str, Any]:
-        a1, a2, a3 = 90, 85, 110
+        a1 = random.choice([70, 80, 85, 90, 95])
+        a2 = random.choice([75, 85, 100, 105])
+        a3 = random.choice([60, 65, 95, 110])
         fourth = 360 - (a1 + a2 + a3)
         prompt = f"Three angles of a quadrilateral measure {a1}°, {a2}°, and {a3}°. What is the measure of the fourth angle?"
         correct = f"{fourth}°"
-        d_tri = f"{180 - (a1 + a2)}°"
+        d_tri = f"{abs(180 - (a1 + a2))}°"  # used the triangle's 180° as the total
         d_adj = f"{fourth + 10}°"
         d_sub = f"{360 - a1}°"
         options = [correct, d_tri, d_adj, d_sub]
@@ -303,7 +345,7 @@ class GenerativeEngine:
             "expected_answer": correct,
             "explanation": f"Sum of interior angles of a quadrilateral is 360°. Fourth angle = 360° - ({a1}° + {a2}° + {a3}°) = {fourth}°.",
             "misconception_map": {
-                d_tri: "triangle-angle-sum-confusion"
+                d_tri: "angle-sum-slip"
             },
             "is_transfer": stage == "test"
         }
@@ -330,10 +372,106 @@ class GenerativeEngine:
             "expected_answer": correct,
             "explanation": f"Discount = ({disc_pct}/100) × ₹{price} = ₹{disc_val}.",
             "misconception_map": {
-                d_final: "confusing-discount-with-sale-price",
-                d_raw: "percent-as-rupees-slip"
+                d_final: "percentage-base-confusion",
+                d_raw: "percentage-base-confusion"
             },
             "is_transfer": stage == "test"
+        }
+
+    def _gen_data_handling_question(self, stage: str, difficulty: str) -> dict[str, Any]:
+        """Mean for routine items; probability for transfer items."""
+        if difficulty == "challenge" or stage == "test":
+            red = random.choice([2, 3, 4, 5, 7])
+            blue = random.choice([3, 5, 6, 8])
+            total = red + blue
+            prompt = f"A bag holds {red} red and {blue} blue marbles. One marble is drawn at random. What is the probability that it is red?"
+            correct = f"{red}/{total}"
+            d_ratio = f"{red}/{blue}"  # favourable over unfavourable
+            d_other = f"{blue}/{total}"
+            d_inverted = f"{total}/{red}"
+            options = [correct, d_ratio, d_other, d_inverted]
+            random.shuffle(options)
+            return {
+                "id": f"gen-data-{random.randint(1000, 9999)}",
+                "concept_id": "data-handling",
+                "stage": stage,
+                "difficulty": difficulty,
+                "prompt": prompt,
+                "options": options,
+                "expected_answer": correct,
+                "explanation": f"P(red) = favourable ÷ total = {red} ÷ ({red} + {blue}) = {red}/{total}.",
+                "misconception_map": {d_ratio: "probability-denominator-slip", d_inverted: "probability-denominator-slip"},
+                "is_transfer": True,
+            }
+        mean = random.choice([5, 6, 7, 8, 9, 12])
+        spread = random.choice([1, 2, 3])
+        values = [mean - spread, mean, mean + spread + 3, mean - 3]
+        total = sum(values)
+        if total % len(values):
+            values[-1] += len(values) - total % len(values)
+            total = sum(values)
+        correct = str(total // len(values))
+        ordered = sorted(values)
+        median = (ordered[1] + ordered[2]) / 2
+        d_sum = str(total)  # forgot to divide
+        d_median = f"{median:g}"
+        d_range = str(ordered[-1] - ordered[0])
+        options = [correct, d_sum, d_median, d_range]
+        random.shuffle(options)
+        return {
+            "id": f"gen-data-{random.randint(1000, 9999)}",
+            "concept_id": "data-handling",
+            "stage": stage,
+            "difficulty": difficulty,
+            "prompt": f"Find the mean of {', '.join(str(v) for v in values)}.",
+            "options": options,
+            "expected_answer": correct,
+            "explanation": f"Add the observations to get {total}, then divide by {len(values)}: {total} ÷ {len(values)} = {correct}.",
+            "misconception_map": {d_sum: "mean-median-confusion", d_median: "mean-median-confusion"},
+            "is_transfer": stage == "test",
+        }
+
+    def _gen_practical_geometry_question(self, stage: str, difficulty: str) -> dict[str, Any]:
+        """Square diagonals (a measured transfer) and the five-measurement rule."""
+        if difficulty == "challenge" or stage == "test":
+            side, area_side = random.choice([(3, "3√2"), (5, "5√2"), (6, "6√2"), (7, "7√2"), (10, "10√2")])
+            correct = f"{area_side} cm"
+            d_side = f"{side} cm"
+            d_double = f"{side * 2} cm"
+            d_area = f"{side * side} cm"
+            options = [correct, d_side, d_double, d_area]
+            random.shuffle(options)
+            return {
+                "id": f"gen-geo-{random.randint(1000, 9999)}",
+                "concept_id": "practical-geometry",
+                "stage": stage,
+                "difficulty": difficulty,
+                "prompt": f"While constructing a square of side {side} cm, you draw its diagonal. How long is the diagonal?",
+                "options": options,
+                "expected_answer": correct,
+                "explanation": f"By Pythagoras, diagonal = √({side}² + {side}²) = √{2 * side * side} = {area_side} cm.",
+                "misconception_map": {d_double: "pythagoras-slip", d_area: "perimeter-area-confusion"},
+                "is_transfer": True,
+            }
+        tool, purpose = random.choice([
+            ("compass", "mark off a fixed distance from a point"),
+            ("protractor", "measure a given angle at a vertex"),
+            ("ruler", "draw a line segment of a given length"),
+        ])
+        others = [t for t in ["compass", "protractor", "ruler", "set square"] if t != tool]
+        options = [tool, *others]
+        random.shuffle(options)
+        return {
+            "id": f"gen-geo-{random.randint(1000, 9999)}",
+            "concept_id": "practical-geometry",
+            "stage": stage,
+            "difficulty": difficulty,
+            "prompt": f"In a quadrilateral construction, which instrument do you use to {purpose}?",
+            "options": options,
+            "expected_answer": tool,
+            "explanation": f"The {tool} is the instrument that fixes this constraint in a construction.",
+            "misconception_map": {other: "construction-tool-slip" for other in others},
+            "is_transfer": stage == "test",
         }
 
     # -------------------------------------------------------------------------
@@ -421,10 +559,9 @@ class GenerativeEngine:
             }
         }
 
-        template = remediation_templates.get(
-            misconception_id,
-            remediation_templates["denominator-magnitude"]
-        )
+        template = remediation_templates.get(misconception_id) or self._remediation_from_database(misconception_id, student_name)
+        if template is None:
+            raise ValueError(f"Unknown misconception '{misconception_id}'")
 
         return {
             "student_name": student_name,
@@ -432,6 +569,29 @@ class GenerativeEngine:
             "misconception_id": misconception_id,
             "generated_at": "Live PRISM Generative Engine",
             **template
+        }
+
+    @staticmethod
+    def _remediation_from_database(misconception_id: str, student_name: str) -> dict[str, Any] | None:
+        """Build a guide for any registered misconception from its database entry."""
+        entry = misconception_entry(misconception_id)
+        if entry is None:
+            return None
+        chapter = next((c for c in CHAPTERS if c["concept"] == entry["concept"]), CHAPTERS[0])
+        bank = QUESTION_BANK[chapter["id"]]
+        stage, prompt, options, answer, explanation = bank[0]
+        return {
+            "title": entry["title"],
+            "cognitive_barrier": f"{student_name}: {entry['description']}",
+            "concrete_analogy": entry["remedy"],
+            "visual_manipulative": entry["remedy"],
+            "counter_example": entry["symptoms"][0],
+            "guided_steps": [
+                f"Step 1: Name the error pattern: {entry['symptoms'][0]}.",
+                f"Step 2: {entry['remedy']}",
+                "Step 3: Answer a new question and explain the reasoning aloud.",
+            ],
+            "diagnostic_probe": {"question": prompt, "options": options, "correct_answer": answer, "explanation": explanation},
         }
 
     # -------------------------------------------------------------------------
@@ -444,6 +604,8 @@ class GenerativeEngine:
         pod_profiles: list[dict[str, Any]] | None = None
     ) -> dict[str, Any]:
         """Generates a structured 45-minute CBSE differentiated classroom lesson plan."""
+        if concept_id != "equivalent-fractions":
+            return self._lesson_plan_for_chapter(concept_id, classroom_code)
         pods = pod_profiles or [
             {"group_key": "visual-support", "students": ["STU-VISUAL"], "count": 1},
             {"group_key": "foundation", "students": ["STU-FOUNDATION"], "count": 1},
@@ -523,6 +685,68 @@ class GenerativeEngine:
                 "evidence_informed": "Pods formed dynamically from student diagnostic attempt patterns, not static achievement streaming.",
                 "nep_2020_alignment": "Encourages experiential learning, visual manipulatives, and multilingual articulation."
             }
+        }
+
+    @staticmethod
+    def _lesson_plan_for_chapter(concept_id: str, classroom_code: str) -> dict[str, Any]:
+        """A 45-minute plan whose pods come from this chapter's own misconceptions."""
+        chapter = next((c for c in CHAPTERS if c["concept"] == concept_id), None)
+        title = chapter["title"] if chapter else concept_id.replace("-", " ").title()
+        pods = [
+            {
+                "pod_name": f"{entry['recommended_route'].replace('-', ' ').title()} Pod",
+                "target_barrier": entry["title"],
+                "activity": entry["remedy"],
+                "teacher_checkpoint": f"Listen for: {entry['symptoms'][0]}",
+                "materials": "Notebook, board, and the activity described",
+            }
+            for entry in MISCONCEPTIONS_DATABASE
+            if entry["concept"] == concept_id
+        ]
+        anchor = QUESTION_BANK[chapter["id"]][0][1] if chapter else f"Introduce {title} with one worked example."
+        return {
+            "title": f"Differentiated Lesson Plan: {title}",
+            "classroom_code": classroom_code,
+            "duration_minutes": 45,
+            "curriculum_framework": "CBSE Class VIII Mathematics · NCERT Middle Stage",
+            "learning_objectives": [
+                f"Diagnose the specific errors learners make in {title}.",
+                f"Differentiate instruction into {len(pods)} targeted pods for this chapter's common errors.",
+                "Check understanding on a new problem before moving on.",
+            ],
+            "timeline": [
+                {
+                    "phase": "Opening Launch & Anchor Problem",
+                    "duration": "7 min",
+                    "pedagogy": "Whole-Class Interactive Inquiry",
+                    "teacher_prompt": f"Put this on the board and ask for reasoning, not just the answer: {anchor}",
+                    "student_action": "Think-Pair-Share with a partner, then write the working in a notebook.",
+                },
+                {
+                    "phase": "Parallel Pod Station Rotations",
+                    "duration": "23 min",
+                    "pedagogy": "Differentiated Flexible Pods (Teacher roving with targeted micro-conferences)",
+                    "pods": pods,
+                },
+                {
+                    "phase": "Plenary Consolidation & Synthesis",
+                    "duration": "10 min",
+                    "pedagogy": "Cross-Pod Synthesis",
+                    "teacher_prompt": "Ask one learner from each pod to explain the error their pod worked on and how to avoid it.",
+                    "student_action": "Class reflection and summary in math journals.",
+                },
+                {
+                    "phase": "Formative Exit Ticket",
+                    "duration": "5 min",
+                    "pedagogy": "Independent Transfer Probe",
+                    "teacher_prompt": "Give a 2-item exit ticket: 1 standard item and 1 transfer item.",
+                    "student_action": "Individual submission recorded in PRISM.",
+                },
+            ],
+            "inspection_rubric": {
+                "evidence_informed": "Pods target the error patterns registered for this chapter, not static achievement streaming.",
+                "nep_2020_alignment": "Encourages experiential learning and multilingual articulation.",
+            },
         }
 
     # -------------------------------------------------------------------------

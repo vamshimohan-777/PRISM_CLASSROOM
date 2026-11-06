@@ -3,7 +3,8 @@ import os
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from .database import Base, engine, get_db
 from .models import Student, Teacher, User, Question, Attempt, LearnerProgress, Classroom, Intervention
 from .schemas import (
@@ -19,14 +20,15 @@ from .schemas import (
     GenerateLessonPlanIn,
     GenerateTransferIn,
 )
-from .engine import update_profile, compile_groups, validate_graph
-from .scoring import recompute_concept, progress_row
+from .engine import CHAPTER_CONCEPTS, CONCEPT_GRAPH, prerequisite_checks, validate_graph
+from .scoring import prerequisite_gap, progress_map, recompute_after_attempt
+from .compiler import CHAPTER_BY_CONCEPT, classroom_plans, recompile_classroom
 from .search_engine import search_engine
 from .answer_engine import answer_engine
 from .generative_engine import generative_engine
 from .curriculum import CBSE_CURRICULUM
-from .catalog import CHAPTERS, chapter_for
-from .auth import create_token, hash_password, read_token, verify_password
+from .catalog import CHAPTERS, chapter_for, concept_title, misconception_entry
+from .auth import create_token, hash_password, read_token, verify_and_upgrade
 from .config import demo_mode
 
 validate_graph()
@@ -97,10 +99,14 @@ def student_for(code: str, db: Session):
     return student
 
 def question_out(q: Question):
-    return {"id":q.id, "concept_id":q.concept_id, "stage":q.stage, "difficulty":q.difficulty, "prompt":q.prompt, "type":q.question_type, "options":q.options, "explanation":q.explanation, "is_transfer":q.is_transfer}
+    # The explanation is withheld here and sent only after an attempt: it usually
+    # states the answer, so including it would let anyone read answers off the wire.
+    return {"id":q.id, "concept_id":q.concept_id, "stage":q.stage, "difficulty":q.difficulty, "prompt":q.prompt, "type":q.question_type, "options":q.options, "is_transfer":q.is_transfer}
 
-def progress_out(p: LearnerProgress, code=""):
-    return {"student_code":code, "mastery":p.mastery, "evidence_count":p.evidence_count, "misconception":p.misconception, "misconception_confidence":p.misconception_confidence, "prerequisite_status":p.prerequisite_status, "recommendation":p.recommendation, "provisional":True}
+def progress_out(p: LearnerProgress, code="", progress_by_concept=None):
+    entry = misconception_entry(p.misconception)
+    gap = prerequisite_gap(progress_by_concept, p.concept_id) if progress_by_concept is not None and p.prerequisite_status == "needs-check" else None
+    return {"prerequisite_gap":gap, "student_code":code, "concept_id":p.concept_id, "mastery":p.mastery, "evidence_count":p.evidence_count, "misconception":p.misconception, "misconception_title":entry["title"] if entry else None, "misconception_remedy":entry["remedy"] if entry else None, "misconception_confidence":p.misconception_confidence, "prerequisite_status":p.prerequisite_status, "recommendation":p.recommendation, "provisional":True}
 
 @app.get("/api/health", tags=["System"], summary="Service health probe")
 def health(): return {"status":"ok"}
@@ -108,8 +114,12 @@ def health(): return {"status":"ok"}
 @app.post("/api/auth/login", tags=["Authentication"], summary="Sign in and receive JWT token")
 def login(payload: LoginIn, db: Session = Depends(get_db)):
     user = db.scalar(select(User).where(User.email == payload.email.strip().lower()))
-    if not user or not verify_password(payload.password, user.password_salt, user.password_hash):
+    matched, upgraded_hash = verify_and_upgrade(payload.password, user.password_salt, user.password_hash) if user else (False, None)
+    if not matched:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Email or password is incorrect")
+    if upgraded_hash:
+        user.password_hash = upgraded_hash
+        db.commit()
     return {"access_token": create_token(user.id, user.role), "token_type": "bearer", "user": user_out(user)}
 
 @app.post("/api/auth/register", status_code=status.HTTP_201_CREATED)
@@ -125,8 +135,12 @@ def register(payload: RegisterIn, db: Session = Depends(get_db)):
         db.add(teacher); db.flush()
         user = User(email=email, name=payload.name.strip(), role="teacher", password_salt=salt, password_hash=password_hash, teacher_id=teacher.id)
     else:
-        target_code = payload.classroom_code.strip().upper() if payload.classroom_code else "8A-CBSE"
+        requested = (payload.classroom_code or "").strip().upper()
+        target_code = requested or "8A-CBSE"
         room = db.scalar(select(Classroom).where(Classroom.code == target_code))
+        if not room and requested:
+            # A mistyped code used to create an empty classroom no teacher could see.
+            raise HTTPException(status.HTTP_404_NOT_FOUND, f"No classroom found with code '{requested}'. Check it with your teacher.")
         if not room:
             room = Classroom(code=target_code, grade=8, curriculum="CBSE-aligned · NCERT reference"); db.add(room); db.flush()
         code = f"STU-{secrets.token_hex(4).upper()}"
@@ -144,8 +158,25 @@ def user_out(user: User):
 
 @app.get("/api/curriculum")
 def curriculum():
-    """The declared board framework for every PRISM learning surface."""
-    return CBSE_CURRICULUM
+    """The declared board framework, with each chapter's prerequisites."""
+    return {
+        **CBSE_CURRICULUM,
+        "prerequisite_graph": [
+            {
+                "unit_id": chapter["id"],
+                "number": chapter["number"],
+                "title": chapter["title"],
+                "concept": chapter["concept"],
+                "skills": [{"id": node, "title": concept_title(node)} for node in prerequisite_checks(chapter["concept"])],
+                "chapters": [
+                    {"id": node, "title": concept_title(node)}
+                    for node in CONCEPT_GRAPH[chapter["concept"]]
+                    if node in CHAPTER_CONCEPTS
+                ],
+            }
+            for chapter in CHAPTERS
+        ],
+    }
 
 @app.get("/api/learning/units")
 def learning_units():
@@ -163,9 +194,10 @@ def progress_for(student_id: int, concept_id: str, db: Session) -> LearnerProgre
 def my_progress(user: User = Depends(require_student), db: Session = Depends(get_db)):
     student = student_for(user.student_code, db)
     rows = []
+    known = progress_map(db, student.id)
     for unit in CHAPTERS:
         progress = progress_for(student.id, unit["concept"], db)
-        rows.append({"unit_id": unit["id"], **progress_out(progress, student.code)})
+        rows.append({"unit_id": unit["id"], **progress_out(progress, student.code, known)})
     db.commit()
     return rows
 
@@ -174,24 +206,51 @@ def unit_questions(unit_id: str, stage: str, user: User = Depends(require_studen
     unit = chapter_for(unit_id)
     if not unit or stage not in {"diagnostic", "practice", "test"}:
         raise HTTPException(404, "Learning activity not found")
-    return [question_out(q) for q in db.scalars(select(Question).where(Question.concept_id == unit["concept"], Question.stage == stage).order_by(Question.id)).all()]
+    # A chapter also asks about its own prerequisite skills. Without this no learner
+    # could produce prerequisite evidence, and the foundation route would only be
+    # reachable from seeded data. Chapter questions come first, then the checks.
+    concepts = [unit["concept"], *prerequisite_checks(unit["concept"])]
+    questions = db.scalars(select(Question).where(Question.concept_id.in_(concepts), Question.stage == stage).order_by(Question.id)).all()
+    return [question_out(q) for q in sorted(questions, key=lambda q: q.id.startswith("prereq-"))]
 
-@app.post("/api/learning/attempts")
-def learning_attempt(payload: AttemptIn, user: User = Depends(require_student), db: Session = Depends(get_db)):
-    student = student_for(user.student_code, db)
+def record_attempt(db: Session, student: Student, payload: AttemptIn) -> dict:
+    """Grade, store and derive from one attempt. Safe to call twice with one submission_id.
+
+    The read below handles an ordinary retry. Two truly simultaneous retries can both
+    pass it, in which case the UNIQUE(student_id, submission_id) constraint rejects the
+    second insert and it is answered as the duplicate it is.
+    """
     question = db.get(Question, payload.question_id)
     if not question or question.stage != payload.stage:
         raise HTTPException(422, "Question does not belong to this activity")
     existing = db.scalar(select(Attempt).where(Attempt.student_id == student.id, Attempt.submission_id == payload.submission_id))
     if existing:
         return {"saved": True, "duplicate": True, "correct": existing.correct, "feedback": "This response was already saved."}
-    answer = payload.response.strip().lower().replace(" ", "")
-    correct = answer == question.expected_answer.lower().replace(" ", "")
-    db.add(Attempt(student_id=student.id, question_id=question.id, submission_id=payload.submission_id, response=payload.response, correct=correct, stage=payload.stage)); db.flush()
-    result = recompute_concept(db, student.id, question.concept_id)
+    correct = payload.response.strip().lower().replace(" ", "") == question.expected_answer.lower().replace(" ", "")
+    db.add(Attempt(student_id=student.id, question_id=question.id, submission_id=payload.submission_id, response=payload.response, correct=correct, stage=payload.stage))
+    try:
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        existing = db.scalar(select(Attempt).where(Attempt.student_id == student.id, Attempt.submission_id == payload.submission_id))
+        return {"saved": True, "duplicate": True, "correct": existing.correct if existing else correct, "feedback": "This response was already saved."}
+    result = recompute_after_attempt(db, student.id, question.concept_id)
     progress = progress_for(student.id, question.concept_id, db)
     db.commit()
-    return {"saved": True, "duplicate": False, "correct": correct, "feedback": question.explanation if correct else "Not quite. Review the explanation and continue with the next activity.", "profile": progress_out(progress, student.code), "reason": result.reason}
+    return {
+        "saved": True,
+        "duplicate": False,
+        "correct": correct,
+        "feedback": question.explanation if correct else "Not quite. Review the explanation and continue with the next activity.",
+        "explanation": question.explanation,
+        "profile": progress_out(progress, student.code, progress_map(db, student.id)),
+        "reason": result.reason,
+        "route": result.recommendation,
+    }
+
+@app.post("/api/learning/attempts")
+def learning_attempt(payload: AttemptIn, user: User = Depends(require_student), db: Session = Depends(get_db)):
+    return record_attempt(db, student_for(user.student_code, db), payload)
 
 @app.post("/api/students/join-classroom", tags=["Student"], summary="Enroll into a classroom using teacher's class code")
 def join_classroom(payload: JoinClassroomIn, user: User = Depends(require_student), db: Session = Depends(get_db)):
@@ -240,72 +299,120 @@ def resolve_teacher(x_demo_teacher: str = "", authorization: str | None = None, 
             return teacher
     raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Sign in as a teacher to view this classroom")
 
+def learner_summaries(db: Session, students: list[Student]) -> dict[int, dict]:
+    """Each learner's profile across chapters, with their most recent chapter in focus.
+
+    Fetched in bulk so a class of 60 costs three queries, not three per learner.
+    """
+    ids = [student.id for student in students]
+    if not ids:
+        return {}
+    users = {u.student_code: u for u in db.scalars(select(User).where(User.student_code.in_([s.code for s in students]))).all()}
+    rows = db.scalars(select(LearnerProgress).where(LearnerProgress.student_id.in_(ids))).all()
+    latest = {
+        (student_id, concept_id): last_attempt
+        for student_id, concept_id, last_attempt in db.execute(
+            select(Attempt.student_id, Question.concept_id, func.max(Attempt.id))
+            .join(Question, Question.id == Attempt.question_id)
+            .where(Attempt.student_id.in_(ids))
+            .group_by(Attempt.student_id, Question.concept_id)
+        ).all()
+    }
+    summaries = {}
+    for student in students:
+        profiles = [row for row in rows if row.student_id == student.id]
+        chapters = sorted(
+            (p for p in profiles if p.evidence_count > 0 and p.concept_id in CHAPTER_BY_CONCEPT),
+            key=lambda p: CHAPTER_BY_CONCEPT[p.concept_id]["number"],
+        )
+        focus = max(chapters, key=lambda p: latest.get((student.id, p.concept_id), 0), default=None)
+        known = {p.concept_id: (p.mastery, p.evidence_count) for p in profiles}
+        gap_for = lambda p: prerequisite_gap(known, p.concept_id) if p.prerequisite_status == "needs-check" else None
+        user = users.get(student.code)
+        entry = misconception_entry(focus.misconception) if focus else None
+        summaries[student.id] = {
+            "code": student.code,
+            "name": user.name if user else student.code,
+            "mastery": round(focus.mastery, 2) if focus else 0,
+            # Every recorded response, including prerequisite-only evidence.
+            "evidence_count": sum(p.evidence_count for p in profiles),
+            "active_units": len(chapters),
+            "focus_unit": CHAPTER_BY_CONCEPT[focus.concept_id]["id"] if focus else None,
+            "focus_chapter_number": CHAPTER_BY_CONCEPT[focus.concept_id]["number"] if focus else None,
+            "recommendation": focus.recommendation if focus else "diagnostic",
+            "misconception": focus.misconception if focus else None,
+            "misconception_title": entry["title"] if entry else None,
+            "misconception_confidence": focus.misconception_confidence if focus else 0.0,
+            "prerequisite_status": focus.prerequisite_status if focus else "unknown",
+            "prerequisite_gap": gap_for(focus) if focus else None,
+            "chapters": [
+                {
+                    "unit_id": CHAPTER_BY_CONCEPT[p.concept_id]["id"],
+                    "number": CHAPTER_BY_CONCEPT[p.concept_id]["number"],
+                    "title": CHAPTER_BY_CONCEPT[p.concept_id]["title"],
+                    "mastery": p.mastery,
+                    "evidence_count": p.evidence_count,
+                    "misconception": p.misconception,
+                    "misconception_title": (misconception_entry(p.misconception) or {}).get("title"),
+                    "misconception_confidence": p.misconception_confidence,
+                    "prerequisite_status": p.prerequisite_status,
+                    "prerequisite_gap": gap_for(p),
+                    "recommendation": p.recommendation,
+                }
+                for p in chapters
+            ],
+        }
+    return summaries
+
 @app.get("/api/teacher/workspace")
 def teacher_workspace(authorization: str | None = Header(default=None), x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db)):
     teacher = resolve_teacher(x_demo_teacher, authorization, db)
     students = db.scalars(select(Student).where(Student.classroom_id == teacher.classroom_id)).all()
-    learners = []
-    for student in students:
-        profiles = db.scalars(select(LearnerProgress).where(LearnerProgress.student_id == student.id)).all()
-        u = db.scalar(select(User).where(User.student_code == student.code))
-        p = db.scalar(select(LearnerProgress).where(LearnerProgress.student_id == student.id, LearnerProgress.concept_id == "equivalent-fractions"))
-        learners.append({
-            "code": student.code,
-            "name": u.name if u else student.code,
-            "mastery": round(p.mastery if p else 0, 2),
-            "evidence_count": p.evidence_count if p else 0,
-            "active_units": sum(1 for item in profiles if item.evidence_count > 0),
-            "recommendation": p.recommendation if p else "diagnostic",
-            "misconception": p.misconception if p else None,
-            "misconception_confidence": p.misconception_confidence if p else 0.0,
-            "prerequisite_status": p.prerequisite_status if p else "unknown"
-        })
-    interventions_data = interventions(teacher.demo_identity, db, authorization)
+    summaries = learner_summaries(db, list(students))
     room = db.get(Classroom, teacher.classroom_id)
-    return {"class_code": room.code if room else "8A-CBSE", "teacher_name": teacher.name, "learners": learners, "interventions": interventions_data}
+    return {"class_code": room.code if room else "8A-CBSE", "teacher_name": teacher.name, "learners": [summaries[s.id] for s in students], "interventions": classroom_plans(db, teacher.classroom_id)}
 
 @app.get("/api/teacher/students/{code}/detail")
 def teacher_student_detail(code: str, authorization: str | None = Header(default=None), x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db)):
-    resolve_teacher(x_demo_teacher, authorization, db)
+    teacher = resolve_teacher(x_demo_teacher, authorization, db)
     student = student_for(code, db)
+    # Same response as a missing student, so codes in other classes cannot be probed.
+    if student.classroom_id != teacher.classroom_id:
+        raise HTTPException(404, "Student not found")
+    summary = learner_summaries(db, [student])[student.id]
     u = db.scalar(select(User).where(User.student_code == code))
-    progress = db.scalar(select(LearnerProgress).where(LearnerProgress.student_id == student.id, LearnerProgress.concept_id == "equivalent-fractions"))
-    attempts = db.scalars(select(Attempt).where(Attempt.student_id == student.id).order_by(Attempt.created_at.desc())).all()
-    history = []
-    for a in attempts:
-        q = db.get(Question, a.question_id)
-        history.append({
+    rows = db.execute(
+        select(Attempt, Question)
+        .join(Question, Question.id == Attempt.question_id)
+        .where(Attempt.student_id == student.id)
+        .order_by(Attempt.created_at.desc(), Attempt.id.desc())
+    ).all()
+    history = [
+        {
             "id": a.id,
             "question_id": a.question_id,
-            "prompt": q.prompt if q else a.question_id,
+            "chapter_title": CHAPTER_BY_CONCEPT[q.concept_id]["title"] if q.concept_id in CHAPTER_BY_CONCEPT else "Prerequisite check",
+            "prompt": q.prompt,
             "stage": a.stage,
             "response": a.response,
-            "expected_answer": q.expected_answer if q else "",
+            "expected_answer": q.expected_answer,
             "correct": a.correct,
-            "misconception": q.misconception_map.get(a.response) if q else None,
-            "explanation": q.explanation if q else "",
-            "created_at": a.created_at.isoformat() if a.created_at else None
-        })
-    return {
-        "code": student.code,
-        "name": u.name if u else student.code,
-        "email": u.email if u else f"{code.lower()}@prism.demo",
-        "grade": student.grade,
-        "mastery": progress.mastery if progress else 0.0,
-        "evidence_count": progress.evidence_count if progress else 0,
-        "misconception": progress.misconception if progress else None,
-        "misconception_confidence": progress.misconception_confidence if progress else 0.0,
-        "prerequisite_status": progress.prerequisite_status if progress else "unknown",
-        "recommendation": progress.recommendation if progress else "diagnostic",
-        "attempts": history
-    }
+            "misconception": (q.misconception_map or {}).get(a.response),
+            "explanation": q.explanation,
+            "created_at": a.created_at.isoformat() if a.created_at else None,
+        }
+        for a, q in rows
+    ]
+    return {**summary, "email": u.email if u else f"{code.lower()}@prism.demo", "grade": student.grade, "attempts": history}
 
 @app.get("/api/demo")
 def demo(db: Session = Depends(get_db)):
+    require_demo_mode()
     return {"students":[s.code for s in db.scalars(select(Student).order_by(Student.id)).all()], "teacher":"TEACHER-PRISM", "curriculum":CBSE_CURRICULUM}
 
 @app.get("/api/demo/personas")
 def demo_personas(db: Session = Depends(get_db)):
+    require_demo_mode()
     return [
         {
             "id": "aarav",
@@ -381,26 +488,12 @@ def questions(code: str, stage: str, db: Session = Depends(get_db)):
 def student_progress(code: str, db: Session = Depends(get_db)):
     require_demo_mode()
     student = student_for(code, db)
-    progress = db.scalar(select(LearnerProgress).where(LearnerProgress.student_id == student.id, LearnerProgress.concept_id == "equivalent-fractions"))
-    if not progress: raise HTTPException(404, "Progress not initialized")
-    return progress_out(progress, code)
+    return [progress_out(p, code) for p in db.scalars(select(LearnerProgress).where(LearnerProgress.student_id == student.id)).all()]
 
 @app.post("/api/students/{code}/attempts")
 def submit_attempt(code: str, payload: AttemptIn, db: Session = Depends(get_db)):
     require_demo_mode()
-    student = student_for(code, db)
-    question = db.get(Question, payload.question_id)
-    if not question or question.stage != payload.stage: raise HTTPException(422, "Question does not belong to this stage")
-    existing = db.scalar(select(Attempt).where(Attempt.student_id == student.id, Attempt.submission_id == payload.submission_id))
-    if existing: return {"saved":True, "duplicate":True, "correct":existing.correct, "feedback":"This response was already saved."}
-    response = payload.response.strip().lower().replace(" ", "")
-    correct = response == question.expected_answer.lower().replace(" ", "")
-    attempt = Attempt(student_id=student.id, question_id=question.id, submission_id=payload.submission_id, response=payload.response, correct=correct, stage=payload.stage)
-    db.add(attempt); db.flush()
-    result = recompute_concept(db, student.id, question.concept_id)
-    progress = progress_row(db, student.id, question.concept_id)
-    db.commit()
-    return {"saved":True, "duplicate":False, "correct":correct, "feedback":question.explanation if correct else "Not quite — review the explanation, then try the next evidence-gathering activity.", "profile":progress_out(progress, code), "reason":result.reason}
+    return record_attempt(db, student_for(code, db), payload)
 
 @app.get("/api/teacher/overview")
 def overview(x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db)):
@@ -410,52 +503,21 @@ def overview(x_demo_teacher: str = Header(default=""), db: Session = Depends(get
     students = db.scalars(select(Student).where(Student.classroom_id == teacher.classroom_id)).all()
     output=[]
     for s in students:
-        p=db.scalar(select(LearnerProgress).where(LearnerProgress.student_id==s.id, LearnerProgress.concept_id=="equivalent-fractions"))
-        output.append(progress_out(p,s.code))
+        output.extend(progress_out(p, s.code) for p in db.scalars(select(LearnerProgress).where(LearnerProgress.student_id==s.id)).all())
     room=db.get(Classroom,teacher.classroom_id)
     return {"class_code":room.code,"curriculum":CBSE_CURRICULUM,"students":output}
 
 @app.get("/api/teacher/interventions")
 def interventions(x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db), authorization: str | None = Header(default=None)):
     teacher = resolve_teacher(x_demo_teacher, authorization, db)
-    records=db.scalars(select(Intervention).where(Intervention.classroom_id==teacher.classroom_id)).all()
-    if not records:
-        students=db.scalars(select(Student).where(Student.classroom_id==teacher.classroom_id)).all()
-        profiles=[]
-        for s in students:
-            p=db.scalar(select(LearnerProgress).where(LearnerProgress.student_id==s.id, LearnerProgress.concept_id=="equivalent-fractions"))
-            if p:
-                p.code=s.code; profiles.append(p)
-        for plan in compile_groups(profiles):
-            ids=[student_for(c,db).id for c in plan.pop("students")]
-            records.append(Intervention(classroom_id=teacher.classroom_id,concept_id="equivalent-fractions",student_ids=ids,**plan))
-            db.add(records[-1])
-        db.commit()
-    return [{"id":r.id,"group_key":r.group_key,"student_codes":[db.get(Student,i).code for i in r.student_ids if db.get(Student,i)],"barrier":r.barrier,"evidence":r.evidence,"confidence":r.confidence,"activity":r.activity,"duration":r.duration,"outcome":r.outcome,"follow_up":r.follow_up,"status":r.status,"teacher_notes":r.teacher_notes} for r in records]
+    return classroom_plans(db, teacher.classroom_id)
 
-@app.post("/api/teacher/interventions/recompile", tags=["Teacher"], summary="Recompile intervention pods from latest live student evidence")
+@app.post("/api/teacher/interventions/recompile", tags=["Teacher"], summary="Refresh proposed pods from live evidence, keeping every teacher decision")
 def recompile_interventions(x_demo_teacher: str = Header(default=""), authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
     teacher = resolve_teacher(x_demo_teacher, authorization, db)
-    # Clear existing interventions to re-cluster on fresh learner evidence
-    existing = db.scalars(select(Intervention).where(Intervention.classroom_id == teacher.classroom_id)).all()
-    for item in existing:
-        db.delete(item)
-    db.flush()
-
-    students = db.scalars(select(Student).where(Student.classroom_id == teacher.classroom_id)).all()
-    profiles = []
-    for s in students:
-        p = db.scalar(select(LearnerProgress).where(LearnerProgress.student_id == s.id, LearnerProgress.concept_id == "equivalent-fractions"))
-        if p:
-            p.code = s.code
-            profiles.append(p)
-    records = []
-    for plan in compile_groups(profiles):
-        ids = [student_for(c, db).id for c in plan.pop("students")]
-        records.append(Intervention(classroom_id=teacher.classroom_id, concept_id="equivalent-fractions", student_ids=ids, **plan))
-        db.add(records[-1])
+    recompile_classroom(db, teacher.classroom_id)
     db.commit()
-    return [{"id": r.id, "group_key": r.group_key, "student_codes": [db.get(Student, i).code for i in r.student_ids if db.get(Student, i)], "barrier": r.barrier, "evidence": r.evidence, "confidence": r.confidence, "activity": r.activity, "duration": r.duration, "outcome": r.outcome, "follow_up": r.follow_up, "status": r.status, "teacher_notes": r.teacher_notes} for r in records]
+    return classroom_plans(db, teacher.classroom_id)
 
 @app.put("/api/teacher/interventions/{intervention_id}")
 def decide_intervention(intervention_id:int, payload:InterventionDecision, x_demo_teacher: str = Header(default=""), db:Session=Depends(get_db), authorization: str | None = Header(default=None)):
@@ -472,7 +534,10 @@ def decide_intervention(intervention_id:int, payload:InterventionDecision, x_dem
     if payload.outcome is not None:
         record.outcome = payload.outcome
     if payload.student_codes is not None:
-        record.student_ids = [student_for(c, db).id for c in payload.student_codes]
+        assigned = [student_for(c, db) for c in payload.student_codes]
+        if any(s.classroom_id != teacher.classroom_id for s in assigned):
+            raise HTTPException(404, "Student not found")
+        record.student_ids = [s.id for s in assigned]
     db.commit()
     return {
         "id": record.id,
@@ -594,12 +659,14 @@ def generate_question_endpoint(payload: GenerateQuestionIn):
 
 @app.post("/api/generate/remediation", tags=["Generative Engine"], summary="Generate personalized remediation guide for student misconception")
 def generate_remediation_endpoint(payload: GenerateRemediationIn):
-    guide = generative_engine.generate_remediation(
-        misconception_id=payload.misconception_id,
-        student_name=payload.student_name,
-        grade=payload.grade,
-    )
-    return guide
+    try:
+        return generative_engine.generate_remediation(
+            misconception_id=payload.misconception_id,
+            student_name=payload.student_name,
+            grade=payload.grade,
+        )
+    except ValueError as error:
+        raise HTTPException(404, str(error))
 
 @app.post("/api/generate/lesson-plan", tags=["Generative Engine"], summary="Generate 45-min differentiated classroom plan for teacher pods")
 def generate_lesson_plan_endpoint(payload: GenerateLessonPlanIn):

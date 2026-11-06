@@ -19,6 +19,11 @@ from fastapi import HTTPException, status
 
 TOKEN_TTL_SECONDS = 60 * 60 * 8
 
+# OWASP's minimum for PBKDF2-HMAC-SHA256. 210,000 is its figure for SHA-512, which
+# is what this used to apply to SHA-256; existing hashes upgrade on next sign-in.
+PBKDF2_ITERATIONS = 600_000
+_LEGACY_ITERATIONS = 210_000
+
 _DEV_SECRET = "change-this-prism-development-secret"
 
 
@@ -51,15 +56,27 @@ def _load_secret() -> bytes:
 _SECRET = _load_secret()
 
 
+def _digest(password: str, salt: str, iterations: int) -> str:
+    raw = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), iterations)
+    return base64.b64encode(raw).decode()
+
+
 def hash_password(password: str, salt: str | None = None) -> tuple[str, str]:
     salt = salt or secrets.token_hex(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 210_000)
-    return salt, base64.b64encode(digest).decode()
+    return salt, _digest(password, salt, PBKDF2_ITERATIONS)
 
 
 def verify_password(password: str, salt: str, expected_hash: str) -> bool:
-    _, actual_hash = hash_password(password, salt)
-    return hmac.compare_digest(actual_hash, expected_hash)
+    return verify_and_upgrade(password, salt, expected_hash)[0]
+
+
+def verify_and_upgrade(password: str, salt: str, expected_hash: str) -> tuple[bool, str | None]:
+    """Check a password; return (matched, replacement hash if it used the old cost)."""
+    if hmac.compare_digest(_digest(password, salt, PBKDF2_ITERATIONS), expected_hash):
+        return True, None
+    if hmac.compare_digest(_digest(password, salt, _LEGACY_ITERATIONS), expected_hash):
+        return True, _digest(password, salt, PBKDF2_ITERATIONS)
+    return False, None
 
 
 def _encode(value: bytes) -> str:
@@ -86,5 +103,5 @@ def read_token(value: str | None) -> dict:
         if not hmac.compare_digest(signature, expected) or data["exp"] < time.time():
             raise ValueError("expired or invalid")
         return data
-    except (ValueError, KeyError, json.JSONDecodeError):
+    except (ValueError, KeyError, TypeError, json.JSONDecodeError):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Your session has expired. Please sign in again.")
