@@ -239,6 +239,52 @@ MISCONCEPTIONS_DATABASE = [
     }
 ]
 
+SUGGESTIONS_BY_LANGUAGE: dict[str, list[str]] = {
+    "en": [
+        "Equivalent fractions",
+        "Denominator magnitude misconception",
+        "Linear equations in one variable",
+        "Solve 3x + 5 = 20",
+        "Squares and square roots",
+        "Understanding quadrilaterals",
+        "Additive equivalence bias",
+        "Comparing quantities discount",
+        "Prerequisite concept DAG",
+        "Visual fraction bar pod",
+        "Recipe scaling transfer",
+        "Data handling probability",
+    ],
+    "hi": [
+        "तुल्य भिन्न (Equivalent fractions)",
+        "हर-परिमाण भ्रांति (Denominator magnitude)",
+        "एक चर वाले रैखिक समीकरण (Linear equations)",
+        "3x + 5 = 20 हल करें",
+        "वर्ग और वर्गमूल (Squares and square roots)",
+        "चतुर्भुजों की समझ (Quadrilaterals)",
+        "योगात्मक तुल्यता भ्रांति (Additive bias)",
+        "राशियों की तुलना और छूट (Discount)",
+        "पूर्वापेक्षा संकल्पना DAG",
+        "दृश्य भिन्न पट्टी समूह (Fraction bar pod)",
+        "विधि मापन अनुप्रयोग (Recipe scaling)",
+        "आँकड़ा प्रबंधन प्रायिकता (Probability)",
+    ],
+    "te": [
+        "సమాన భిన్నాలు (Equivalent fractions)",
+        "హారం-పరిమాణ అపోహ (Denominator magnitude)",
+        "ఏక చరరాశి రేఖీయ సమీకరణాలు (Linear equations)",
+        "3x + 5 = 20 పరిష్కరించండి",
+        "వర్గాలు మరియు వర్గమూలాలు (Squares and square roots)",
+        "చతుర్భుజాల అవగాహన (Quadrilaterals)",
+        "సంకలన సమానత్వ అపోహ (Additive bias)",
+        "రాశుల పోలిక మరియు తగ్గింపు (Discount)",
+        "ముందస్తు భావన DAG",
+        "దృశ్య భిన్న పట్టీ బృందం (Fraction bar pod)",
+        "వంటకం నిష్పత్తి అనువర్తనం (Recipe scaling)",
+        "దత్తాంశ నిర్వహణ సంభావ్యత (Probability)",
+    ],
+}
+
+
 @dataclass
 class SearchResult:
     id: str
@@ -462,27 +508,27 @@ class SearchEngine:
         suffix = "..." if end < len(text) else ""
         return prefix + text[start:end].strip() + suffix
 
-    def get_suggestions(self, prefix: str = "", limit: int = 6) -> list[str]:
-        """Provides instant query autocompletion suggestions."""
-        curated_suggestions = [
-            "Equivalent fractions",
-            "Denominator magnitude misconception",
-            "Linear equations in one variable",
-            "Solve 3x + 5 = 20",
-            "Squares and square roots",
-            "Understanding quadrilaterals",
-            "Additive equivalence bias",
-            "Comparing quantities discount",
-            "Prerequisite concept DAG",
-            "Visual fraction bar pod",
-            "Recipe scaling transfer",
-            "Data handling probability"
-        ]
+    def get_suggestions(self, prefix: str = "", limit: int = 6, lang: str = "en") -> list[str]:
+        """Provides instant query autocompletion suggestions in the caller's language.
+
+        These are rendered as clickable chips in the UI, so they are shown to the
+        learner and have to follow the language switcher like any other visible
+        string. The index itself is English, so a localised chip carries its
+        English term in parentheses, matching how these topics are named in
+        Hindi- and Telugu-medium CBSE classrooms, and keeping the chip usable as
+        a query against the index.
+        """
+        curated = SUGGESTIONS_BY_LANGUAGE.get(lang, SUGGESTIONS_BY_LANGUAGE["en"])
         p = prefix.strip().lower()
         if not p:
-            return curated_suggestions[:limit]
-        matches = [s for s in curated_suggestions if p in s.lower()]
-        return matches[:limit] or [f"{prefix} concept", f"{prefix} questions", f"{prefix} misconception"]
+            return curated[:limit]
+        matches = [s for s in curated if p in s.lower()]
+        if matches:
+            return matches[:limit]
+        # Fall back to matching the English index, so a learner typing an English
+        # term still gets suggestions while the interface is in another language.
+        english = [s for s in SUGGESTIONS_BY_LANGUAGE["en"] if p in s.lower()]
+        return english[:limit] or [f"{prefix} concept", f"{prefix} questions", f"{prefix} misconception"]
 
 
 # Global engine singleton

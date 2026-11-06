@@ -542,8 +542,8 @@ def search_get(q: str = "", entity_type: str = "all", chapter_id: str = "all", l
     }
 
 @app.get("/api/search/suggestions", tags=["Search Engine"], summary="Autocomplete suggestions")
-def search_suggestions(q: str = ""):
-    return {"suggestions": search_engine.get_suggestions(prefix=q)}
+def search_suggestions(q: str = "", lang: str = "en"):
+    return {"suggestions": search_engine.get_suggestions(prefix=q, lang=lang)}
 
 # ----------------------------------------------------
 # 2. PRISM Answer Engine API

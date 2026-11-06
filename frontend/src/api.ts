@@ -253,8 +253,8 @@ export const api = {
     request<Plan[]>('/teacher/interventions/recompile', { method: 'POST' }, token),
   search: (query: string, entity_type: string = 'all', chapter_id: string = 'all', limit: number = 15) =>
     request<SearchResponse>('/search', { method: 'POST', body: JSON.stringify({ query, entity_type, chapter_id, limit }) }),
-  searchSuggestions: (prefix: string = '') =>
-    request<{ suggestions: string[] }>(`/search/suggestions?q=${encodeURIComponent(prefix)}`),
+  searchSuggestions: (prefix: string = '', lang: string = 'en') =>
+    request<{ suggestions: string[] }>(`/search/suggestions?q=${encodeURIComponent(prefix)}&lang=${encodeURIComponent(lang)}`),
   answer: (query: string, concept_id?: string) =>
     request<AnswerResponse>('/answer', { method: 'POST', body: JSON.stringify({ query, concept_id }) }),
   generateQuestion: (concept_id: string = 'equivalent-fractions', stage: 'diagnostic' | 'practice' | 'test' = 'practice', difficulty: 'foundation' | 'standard' | 'challenge' = 'standard') =>
