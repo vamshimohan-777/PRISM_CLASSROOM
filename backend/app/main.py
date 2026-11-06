@@ -20,6 +20,7 @@ from .schemas import (
     GenerateTransferIn,
 )
 from .engine import update_profile, compile_groups, validate_graph
+from .scoring import recompute_concept, progress_row
 from .search_engine import search_engine
 from .answer_engine import answer_engine
 from .generative_engine import generative_engine
@@ -175,13 +176,8 @@ def learning_attempt(payload: AttemptIn, user: User = Depends(require_student), 
     answer = payload.response.strip().lower().replace(" ", "")
     correct = answer == question.expected_answer.lower().replace(" ", "")
     db.add(Attempt(student_id=student.id, question_id=question.id, submission_id=payload.submission_id, response=payload.response, correct=correct, stage=payload.stage)); db.flush()
-    attempts = db.scalars(select(Attempt).join(Question).where(Attempt.student_id == student.id, Question.concept_id == question.concept_id).order_by(Attempt.created_at)).all()
-    evidence = [{"correct": item.correct, "stage": item.stage, "transfer": db.get(Question, item.question_id).is_transfer, "misconception": db.get(Question, item.question_id).misconception_map.get(item.response)} for item in attempts]
+    result = recompute_concept(db, student.id, question.concept_id)
     progress = progress_for(student.id, question.concept_id, db)
-    result = update_profile(progress.mastery, evidence)
-    progress.mastery, progress.evidence_count = result.mastery, result.evidence_count
-    progress.misconception, progress.misconception_confidence = result.misconception, result.misconception_confidence
-    progress.prerequisite_status, progress.recommendation = result.prerequisite_status, result.recommendation
     db.commit()
     return {"saved": True, "duplicate": False, "correct": correct, "feedback": question.explanation if correct else "Not quite. Review the explanation and continue with the next activity.", "profile": progress_out(progress, student.code), "reason": result.reason}
 
@@ -374,16 +370,8 @@ def submit_attempt(code: str, payload: AttemptIn, db: Session = Depends(get_db))
     correct = response == question.expected_answer.lower().replace(" ", "")
     attempt = Attempt(student_id=student.id, question_id=question.id, submission_id=payload.submission_id, response=payload.response, correct=correct, stage=payload.stage)
     db.add(attempt); db.flush()
-    all_attempts = db.scalars(select(Attempt).join(Question).where(Attempt.student_id == student.id, Question.concept_id == "equivalent-fractions").order_by(Attempt.created_at)).all()
-    evidence = [{"correct":a.correct, "stage":a.stage, "transfer":db.get(Question,a.question_id).is_transfer, "misconception":db.get(Question,a.question_id).misconception_map.get(a.response, None)} for a in all_attempts]
-    progress = db.scalar(select(LearnerProgress).where(LearnerProgress.student_id == student.id, LearnerProgress.concept_id == "equivalent-fractions"))
-    result = update_profile(progress.mastery if progress else .35, evidence)
-    if not progress:
-        progress = LearnerProgress(student_id=student.id, concept_id="equivalent-fractions")
-        db.add(progress)
-    progress.mastery, progress.evidence_count = result.mastery, result.evidence_count
-    progress.misconception, progress.misconception_confidence = result.misconception, result.misconception_confidence
-    progress.prerequisite_status, progress.recommendation = result.prerequisite_status, result.recommendation
+    result = recompute_concept(db, student.id, question.concept_id)
+    progress = progress_row(db, student.id, question.concept_id)
     db.commit()
     return {"saved":True, "duplicate":False, "correct":correct, "feedback":question.explanation if correct else "Not quite — review the explanation, then try the next evidence-gathering activity.", "profile":progress_out(progress, code), "reason":result.reason}
 
@@ -397,7 +385,7 @@ def overview(x_demo_teacher: str = Header(default=""), db: Session = Depends(get
         p=db.scalar(select(LearnerProgress).where(LearnerProgress.student_id==s.id, LearnerProgress.concept_id=="equivalent-fractions"))
         output.append(progress_out(p,s.code))
     room=db.get(Classroom,teacher.classroom_id)
-    return {"class_code":room.code,"real_data":True,"curriculum":CBSE_CURRICULUM,"students":output}
+    return {"class_code":room.code,"curriculum":CBSE_CURRICULUM,"students":output}
 
 @app.get("/api/teacher/interventions")
 def interventions(x_demo_teacher: str = Header(default=""), db: Session = Depends(get_db), authorization: str | None = Header(default=None)):

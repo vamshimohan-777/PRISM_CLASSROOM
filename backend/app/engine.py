@@ -26,6 +26,39 @@ def validate_graph(graph=CONCEPT_GRAPH):
     for key in graph: walk(key)
     return True
 
+def ancestors(concept_id, graph=CONCEPT_GRAPH):
+    """All transitive prerequisites of a concept, nearest first.
+
+    Concepts outside the graph (e.g. chapters with no modelled prerequisites)
+    return an empty list, so prerequisite routing simply does not apply to them.
+    """
+    if concept_id not in graph:
+        return []
+    ordered, seen, frontier = [], {concept_id}, list(graph[concept_id])
+    while frontier:
+        node = frontier.pop(0)
+        if node in seen:
+            continue
+        seen.add(node)
+        ordered.append(node)
+        frontier.extend(graph.get(node, []))
+    return ordered
+
+def prerequisite_mastery_from(progress_by_concept, concept_id, graph=CONCEPT_GRAPH):
+    """Weakest observed prerequisite mastery, or None when no prerequisite has evidence.
+
+    `progress_by_concept` maps concept_id -> (mastery, evidence_count). Only
+    prerequisites that the learner has actually attempted count as evidence;
+    an unattempted prerequisite is unknown, not weak.
+    """
+    observed = [
+        mastery
+        for parent in ancestors(concept_id, graph)
+        for mastery, evidence_count in [progress_by_concept.get(parent, (0.0, 0))]
+        if evidence_count > 0
+    ]
+    return min(observed) if observed else None
+
 @dataclass
 class RuleResult:
     mastery: float
@@ -36,7 +69,7 @@ class RuleResult:
     recommendation: str
     reason: str
 
-def update_profile(previous, attempts, prerequisite_mastery=0.75):
+def update_profile(previous, attempts, prerequisite_mastery=None):
     """Recompute profile from observable attempts; one error cannot establish a label."""
     count = len(attempts)
     if not count:
@@ -50,14 +83,21 @@ def update_profile(previous, attempts, prerequisite_mastery=0.75):
     leading = max(set(tags), key=tags.count) if tags else None
     leading_count = tags.count(leading) if leading else 0
     confidence = round(leading_count / count, 2) if leading_count >= 2 else 0.0
-    prerequisite = "secure" if prerequisite_mastery >= .65 else "needs-check"
+    if prerequisite_mastery is None:
+        prerequisite = "unknown"
+    elif prerequisite_mastery >= .65:
+        prerequisite = "secure"
+    else:
+        prerequisite = "needs-check"
     if prerequisite == "needs-check" and correct <= 1:
-        return RuleResult(mastery, count, leading if confidence else None, confidence, prerequisite, "foundation", "Prerequisite fraction-part knowledge appears incomplete; foundation scaffolding is prescribed before equivalence practice.")
+        return RuleResult(mastery, count, leading if confidence else None, confidence, prerequisite, "foundation", f"Rule: weakest attempted prerequisite scores {prerequisite_mastery:.2f} (< 0.65 threshold) and only {correct}/{count} responses here are correct. Foundation scaffolding is prescribed before continuing this concept.")
     if leading and confidence >= .5:
         return RuleResult(mastery, count, leading, confidence, prerequisite, "visual-support", f"Rule: {leading_count}/{count} incorrect responses carry the '{leading}' error tag (≥50% threshold). Visual representation change is prescribed.")
     if count >= 2 and correct != count and leading_count < 2:
         return RuleResult(mastery, count, None, 0, prerequisite, "follow-up", "Evidence is mixed and no single error pattern dominates. Teacher should ask one discriminating follow-up question before choosing a route.")
     if transfer and transfer[-1]["correct"] and mastery >= .72:
+        # An unassisted transfer item passed at high mastery is itself sufficient
+        # evidence that the prerequisites hold, whatever the DAG has observed.
         return RuleResult(mastery, count, None, 0, "secure", "extension", "Most-recent transfer item answered correctly and rubric mastery ≥ 72%. Independent extension challenge is prescribed.")
     if mastery >= .68 and count >= 3:
         return RuleResult(mastery, count, None, 0, prerequisite, "test", "Mastery ≥ 68% across ≥3 items. Progressing to independent transfer verification stage.")

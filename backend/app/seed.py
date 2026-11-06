@@ -2,6 +2,7 @@
 from .database import Base, engine, SessionLocal
 from .models import Classroom, Teacher, Student, Concept, Question, LearnerProgress, User, Attempt, Intervention
 from .engine import validate_graph, compile_groups
+from .scoring import recompute_student
 from .curriculum import CBSE_CURRICULUM
 from .auth import hash_password
 from .catalog import CHAPTERS, QUESTION_BANK
@@ -12,14 +13,18 @@ CONCEPTS = [
  ("simplification", "Standard form", "Write a rational number in standard form by dividing both terms by a common factor.", ["fraction-parts"]),
  ("equivalent-fractions", "Equivalent rational numbers", "Generate, recognise, simplify, and apply equivalent rational numbers.", ["fraction-magnitude","simplification"]),
 ]
+# (id, concept_id, stage, difficulty, prompt, options, answer, explanation, misconception_map)
+# `diag-representation` assesses the *prerequisite* node `fraction-parts`, not
+# equivalence itself, so evidence from it flows into the prerequisite DAG and can
+# legitimately trigger the foundation route.
 QUESTIONS = [
- ("diag-equivalent", "diagnostic", 1, "Which fraction is equivalent to 1/2?", ["2/3","2/4","3/4","1/4"], "2/4", "Multiplying the numerator and denominator of 1/2 by 2 gives 2/4.", {}),
- ("diag-magnitude", "diagnostic", 1, "Which is greater?", ["1/8","1/3","They are equal"], "1/3", "With the same numerator, the fraction with fewer equal parts is greater.", {"1/8":"denominator-magnitude"}),
- ("diag-simplify", "diagnostic", 2, "Write -18/24 in standard form.", ["-3/4","3/4","-9/12","-18/12"], "-3/4", "Divide numerator and denominator by 6 and keep the negative sign: -18/24 = -3/4.", {"3/4":"sign-error","-9/12":"incomplete-simplification","-18/12":"unequal-operations"}),
- ("diag-representation", "diagnostic", 2, "A strip is split into 6 equal parts and 3 are shaded. Which matching fraction names the same amount?", ["1/2","1/3","2/3","3/3"], "1/2", "Three of six equal parts is one half.", {"1/3":"fraction-parts-gap"}),
- ("practice-guided", "practice", 2, "Complete: 3/5 = __/10", ["5","6","7","8"], "6", "Multiply both numerator and denominator by 2: 3/5 = 6/10.", {"5":"unequal-operations","8":"additive-equivalence"}),
- ("practice-standard", "practice", 3, "Which pair names the same rational number?", ["4/6 and 6/8","-3/4 and 6/-8","2/5 and 4/15","5/6 and 10/15"], "-3/4 and 6/-8", "A negative sign in either the numerator or denominator makes the rational number negative: 6/-8 = -3/4.", {"4/6 and 6/8":"additive-equivalence"}),
- ("test-transfer", "test", 3, "A recipe uses 2/3 cup of milk. Which amount is the same quantity in sixth-cup measures?", ["3/6","4/6","5/6","2/6"], "4/6", "Multiply 2/3 by 2/2 to write it in sixths: 4/6.", {"3/6":"denominator-magnitude","5/6":"additive-equivalence"}),
+ ("diag-equivalent", "equivalent-fractions", "diagnostic", 1, "Which fraction is equivalent to 1/2?", ["2/3","2/4","3/4","1/4"], "2/4", "Multiplying the numerator and denominator of 1/2 by 2 gives 2/4.", {"2/3":"additive-bias"}),
+ ("diag-magnitude", "equivalent-fractions", "diagnostic", 1, "Which is greater?", ["1/8","1/3","They are equal"], "1/3", "With the same numerator, the fraction with fewer equal parts is greater.", {"1/8":"denominator-magnitude"}),
+ ("diag-simplify", "equivalent-fractions", "diagnostic", 2, "Write -18/24 in standard form.", ["-3/4","3/4","-9/12","-18/12"], "-3/4", "Divide numerator and denominator by 6 and keep the negative sign: -18/24 = -3/4.", {"3/4":"sign-error","-9/12":"incomplete-simplification","-18/12":"unequal-operations"}),
+ ("diag-representation", "fraction-parts", "diagnostic", 2, "A strip is split into 6 equal parts and 3 are shaded. Which matching fraction names the same amount?", ["1/2","1/3","2/3","3/3"], "1/2", "Three of six equal parts is one half.", {"1/3":"fraction-parts-gap","2/3":"fraction-parts-gap"}),
+ ("practice-guided", "equivalent-fractions", "practice", 2, "Complete: 3/5 = __/10", ["5","6","7","8"], "6", "Multiply both numerator and denominator by 2: 3/5 = 6/10.", {"5":"unequal-operations","8":"additive-bias"}),
+ ("practice-standard", "equivalent-fractions", "practice", 3, "Which pair names the same rational number?", ["4/6 and 6/8","-3/4 and 6/-8","2/5 and 4/15","5/6 and 10/15"], "-3/4 and 6/-8", "A negative sign in either the numerator or denominator makes the rational number negative: 6/-8 = -3/4.", {"4/6 and 6/8":"additive-bias"}),
+ ("test-transfer", "equivalent-fractions", "test", 3, "A recipe uses 2/3 cup of milk. Which amount is the same quantity in sixth-cup measures?", ["3/6","4/6","5/6","2/6"], "4/6", "Multiply 2/3 by 2/2 to write it in sixths: 4/6.", {"3/6":"denominator-magnitude","5/6":"additive-bias"}),
 ]
 
 def main():
@@ -48,28 +53,30 @@ def main():
    question_id=f'{chapter["id"]}-{stage}-{index}'
    if not db.get(Question,question_id):
     db.add(Question(id=question_id,concept_id=chapter["concept"],stage=stage,difficulty=index,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map={},is_transfer=stage=="test"))
- for qid,stage,difficulty,prompt,options,answer,explanation,mapping in QUESTIONS:
-  if not db.get(Question,qid): db.add(Question(id=qid,concept_id="equivalent-fractions",stage=stage,difficulty=difficulty,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map=mapping,is_transfer=stage=="test"))
- PROFILES = [
-  ("STU-VISUAL", "Aarav Sharma", "student@prism.demo", "visual-support", .38, 4, "denominator-magnitude", .75, "needs-check"),
-  ("STU-FOUNDATION", "Diya Patel", "diya@prism.demo", "foundation", .27, 3, "fraction-parts-gap", .55, "needs-check"),
-  ("STU-CALC", "Kabir Verma", "kabir@prism.demo", "guided-practice", .54, 4, "unequal-operations", .5, "secure"),
-  ("STU-EXTEND", "Meera Iyer", "meera@prism.demo", "extension", .88, 5, None, 0.0, "secure"),
+ for qid,concept,stage,difficulty,prompt,options,answer,explanation,mapping in QUESTIONS:
+  if not db.get(Question,qid): db.add(Question(id=qid,concept_id=concept,stage=stage,difficulty=difficulty,prompt=prompt,question_type="choice",options=options,expected_answer=answer,explanation=explanation,misconception_map=mapping,is_transfer=stage=="test"))
+ # Demo learners carry identity only. Their mastery, misconception label and
+ # route are NOT stored here -- they are derived from seeded attempts by the
+ # same engine that scores live traffic (see recompute_student below).
+ LEARNERS = [
+  ("STU-VISUAL", "Aarav Sharma", "student@prism.demo"),
+  ("STU-FOUNDATION", "Diya Patel", "diya@prism.demo"),
+  ("STU-CALC", "Kabir Verma", "kabir@prism.demo"),
+  ("STU-EXTEND", "Meera Iyer", "meera@prism.demo"),
  ]
- for code, name, email, route, mastery, count, miscon, conf, pre in PROFILES:
+ for code, name, email in LEARNERS:
   s = db.query(Student).filter_by(code=code).first()
   if not s:
    s = Student(code=code, grade=8, language="en", classroom_id=room.id); db.add(s); db.flush()
   else:
    s.classroom_id = room.id
-  prog = db.query(LearnerProgress).filter_by(student_id=s.id, concept_id="equivalent-fractions").first()
-  if not prog:
-   db.add(LearnerProgress(student_id=s.id, concept_id="equivalent-fractions", mastery=mastery, evidence_count=count, recent_correct=max(0, count-1), misconception=miscon, misconception_confidence=conf, prerequisite_status=pre, recommendation=route))
-  else:
-   prog.mastery, prog.evidence_count, prog.misconception, prog.misconception_confidence, prog.prerequisite_status, prog.recommendation = mastery, count, miscon, conf, pre, route
 
  db.flush()
  seed_attempts(db)
+ db.flush()
+ for student in db.query(Student).filter_by(classroom_id=room.id).all():
+  recompute_student(db, student.id)
+ db.flush()
 
  def demo_user(email, name, role, student_code=None, teacher_id=None):
   u = db.query(User).filter_by(email=email).first()
@@ -104,8 +111,9 @@ def seed_attempts(db):
   ("STU-CALC", [
    ("diag-equivalent", "2/4", True, "diagnostic", "seed-sub-kabir-1"),
    ("diag-magnitude", "1/3", True, "diagnostic", "seed-sub-kabir-2"),
-   ("diag-simplify", "-9/12", False, "diagnostic", "seed-sub-kabir-3"),
+   ("diag-simplify", "-18/12", False, "diagnostic", "seed-sub-kabir-3"),
    ("practice-guided", "5", False, "practice", "seed-sub-kabir-4"),
+   ("practice-standard", "-3/4 and 6/-8", True, "practice", "seed-sub-kabir-5"),
   ]),
   ("STU-EXTEND", [
    ("diag-equivalent", "2/4", True, "diagnostic", "seed-sub-meera-1"),
@@ -137,31 +145,24 @@ def compile_initial_interventions(db, classroom_id):
    db.add(Intervention(classroom_id=classroom_id, concept_id="equivalent-fractions", student_ids=ids, **plan))
 
 def reset_to_seed(db):
- db.query(Attempt).delete()
- db.query(Intervention).delete()
- PROFILES = [
-  ("STU-VISUAL", "visual-support", .38, 4, "denominator-magnitude", .75, "needs-check"),
-  ("STU-FOUNDATION", "foundation", .27, 3, "fraction-parts-gap", .55, "needs-check"),
-  ("STU-CALC", "guided-practice", .54, 4, "unequal-operations", .5, "secure"),
-  ("STU-EXTEND", "extension", .88, 5, None, 0.0, "secure"),
- ]
- for code, route, mastery, count, miscon, conf, pre in PROFILES:
-  s = db.query(Student).filter_by(code=code).first()
-  if s:
-   prog = db.query(LearnerProgress).filter_by(student_id=s.id, concept_id="equivalent-fractions").first()
-   if prog:
-    prog.mastery = mastery
-    prog.evidence_count = count
-    prog.recent_correct = max(0, count - 1)
-    prog.misconception = miscon
-    prog.misconception_confidence = conf
-    prog.prerequisite_status = pre
-    prog.recommendation = route
- seed_attempts(db)
- room = db.query(Classroom).filter_by(code="8A-CBSE").first()
- if room:
-  compile_initial_interventions(db, room.id)
- db.commit()
+    """Return the classroom to its pristine demo state.
+
+    Attempts are re-inserted and every profile is re-derived by the engine;
+    no mastery score or route is written by hand.
+    """
+    db.query(Attempt).delete()
+    db.query(Intervention).delete()
+    db.query(LearnerProgress).delete()
+    db.flush()
+    seed_attempts(db)
+    db.flush()
+    for student in db.query(Student).all():
+        recompute_student(db, student.id)
+    db.flush()
+    room = db.query(Classroom).filter_by(code="8A-CBSE").first()
+    if room:
+        compile_initial_interventions(db, room.id)
+    db.commit()
 
 if __name__ == "__main__":
  import sys, os

@@ -44,3 +44,39 @@ def test_compiler_groups_skips_pre_diagnostic_profiles():
     groups = compile_groups([diag, ready])
     assert len(groups) == 1
     assert groups[0]["group_key"] == "guided-practice"
+
+# ---------------------------------------------------------------------------
+# Prerequisite DAG now drives routing (previously the parameter was never passed)
+# ---------------------------------------------------------------------------
+
+def test_ancestors_are_transitive():
+    from app.engine import ancestors
+    assert set(ancestors("equivalent-fractions")) == {"fraction-magnitude", "simplification", "fraction-parts"}
+    assert ancestors("fraction-parts") == []
+
+def test_ancestors_of_unmodelled_concept_is_empty():
+    """Chapters with no modelled prerequisites must not break prerequisite routing."""
+    from app.engine import ancestors
+    assert ancestors("comparing-quantities") == []
+
+def test_prerequisite_mastery_ignores_unattempted_nodes():
+    from app.engine import prerequisite_mastery_from
+    # fraction-parts attempted and weak; simplification never attempted
+    observed = {"fraction-parts": (0.2, 3), "simplification": (0.9, 0)}
+    assert prerequisite_mastery_from(observed, "equivalent-fractions") == 0.2
+
+def test_prerequisite_mastery_is_none_without_any_evidence():
+    from app.engine import prerequisite_mastery_from
+    assert prerequisite_mastery_from({"simplification": (0.9, 0)}, "equivalent-fractions") is None
+
+def test_unknown_prerequisite_never_forces_foundation():
+    """No prerequisite evidence means unknown, not weak."""
+    result = update_profile(.35, evidence([{"correct": False, "misconception": "x"}]), prerequisite_mastery=None)
+    assert result.prerequisite_status == "unknown"
+    assert result.recommendation != "foundation"
+
+def test_weak_prerequisite_routes_to_foundation_with_measured_reason():
+    result = update_profile(.35, evidence([{"correct": False}, {"correct": True}]), prerequisite_mastery=.2)
+    assert result.recommendation == "foundation"
+    assert result.prerequisite_status == "needs-check"
+    assert "0.20" in result.reason
